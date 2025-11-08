@@ -1,0 +1,29 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependency directories
+node_modules/
+
+# Build outputs
+build/
+dist/
+.out/
+.next/
+.vscode-test/
+coverage/
+
+# Local environment overrides
+.env
+client/.env
+server/.env
+
+# Misc
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

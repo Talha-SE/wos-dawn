@@ -1,0 +1,192 @@
+@import url('https://fonts.googleapis.com/css2?family=Monstera:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --bg-gradient: radial-gradient(circle at 0% 0%, rgba(37, 99, 235, 0.20), transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(6, 182, 212, 0.16), transparent 45%),
+    radial-gradient(circle at 50% 100%, rgba(56, 189, 248, 0.12), transparent 45%),
+    #05060f;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg-gradient);
+  font-family: 'Monstera', 'Inter', 'Space Grotesk', system-ui, sans-serif;
+  transition: opacity 0.4s ease, filter 0.4s ease;
+  @apply antialiased text-white;
+}
+
+#root { min-height: 100vh; }
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(145deg, rgba(9, 13, 27, 0.92), rgba(4, 6, 9, 0.96));
+  overflow: hidden;
+}
+
+.app-shell::before,
+.app-shell::after {
+  content: '';
+  position: absolute;
+  width: 460px;
+  height: 460px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.app-shell::before {
+  top: -160px;
+  left: -140px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.85), transparent 60%);
+}
+
+.app-shell::after {
+  bottom: -160px;
+  right: -120px;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.75), transparent 60%);
+}
+
+.ambient-orb {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.50), transparent 70%);
+  opacity: 0.35;
+  filter: blur(50px);
+  pointer-events: none;
+}
+
+.ambient-orb.orb-1 { top: 30%; left: -140px; }
+.ambient-orb.orb-2 { bottom: 12%; right: -120px; }
+
+.glass {
+  background: linear-gradient(145deg, rgba(24, 24, 35, 0.9), rgba(29, 29, 45, 0.6));
+  @apply backdrop-blur-xl border border-white/5 shadow-glass;
+}
+
+.glass-soft {
+  background: linear-gradient(160deg, rgba(34, 35, 52, 0.55), rgba(24, 26, 41, 0.45));
+  @apply backdrop-blur-lg border border-white/5;
+}
+
+.card {
+  @apply glass rounded-2xl p-6 relative overflow-hidden;
+  border: 1px solid rgba(148, 163, 255, 0.08);
+  box-shadow: 0 35px 60px -35px rgba(59, 130, 246, 0.35);
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(120deg, rgba(37, 99, 235, 0.30), rgba(6, 182, 212, 0.18));
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.card:hover::before { opacity: 0.22; }
+
+.card-header {
+  @apply flex items-start justify-between gap-4 mb-6;
+}
+
+.section-title {
+  @apply font-display text-xl md:text-2xl text-white tracking-tight;
+}
+
+.subtext {
+  @apply text-sm text-white/60;
+}
+
+.input {
+  @apply w-full h-12 px-4 rounded-xl bg-white/5 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/60 transition;
+  border: 1px solid rgba(148, 163, 255, 0.15);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.input:focus {
+  border-color: rgba(37, 99, 235, 0.55);
+  box-shadow: 0 8px 25px -15px rgba(37, 99, 235, 0.6);
+}
+
+.button-primary {
+  @apply relative inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-medium text-white transition;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.98), rgba(14, 165, 233, 0.95));
+  box-shadow: 0 15px 35px -20px rgba(37, 99, 235, 0.75);
+}
+
+.button-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.32), transparent 60%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.button-primary:hover::after { opacity: 0.28; }
+
+.button-primary:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: none; }
+
+.button-ghost {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-white/70 border border-white/10 transition;
+}
+
+.button-ghost:hover { border-color: rgba(37, 99, 235, 0.5); color: white; }
+
+.nav-pill {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.nav-pill svg { @apply transition-transform duration-300; }
+
+.nav-pill:hover svg { transform: translateX(2px); }
+
+.nav-pill.active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(14, 165, 233, 0.26));
+  border-color: rgba(37, 99, 235, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.badge {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs uppercase tracking-wide;
+  background: rgba(37, 99, 235, 0.18);
+  border: 1px solid rgba(37, 99, 235, 0.38);
+}
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95), transparent 75%);
+  pointer-events: none;
+}
+
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+body > .skiptranslate {
+  display: none !important;
+}
+
+body {
+  top: 0 !important;
+}
+
+html.translate-fading,
+body.translate-fading {
+  opacity: 0.82;
+  filter: blur(0.5px);
+}
