@@ -85,55 +85,71 @@ export default function PrivateRedeem() {
   }, [iframeReady, gameId, isNineDigits])
 
   return (
-    <div className="space-y-4">
-      <div className="glass rounded-2xl px-4 md:px-6 py-4 border border-white/10 shadow-lg flex flex-col md:flex-row md:items-end gap-3">
-        <div className="flex-1">
-          <label className="text-xs uppercase tracking-wider text-white/50 mb-2 block">Game ID</label>
-          <Input
-            value={gameId}
-            onChange={(e) => setGameId(e.target.value)}
-            placeholder="Enter 9-digit game ID"
-            className="font-mono"
-            maxLength={9}
-          />
-          <div className="flex items-center gap-3 mt-2 text-xs text-white/60">
-            <span>Status:</span>
-            <span className={`${saving ? 'text-primary' : savedAt ? 'text-emerald-300' : 'text-white/60'}`}>{saving ? 'Saving…' : savedAt ? 'Saved' : 'Idle'}</span>
-            <span className="ml-3">Length:</span>
-            <span className={`${isNineDigits ? 'text-emerald-300' : 'text-amber-300'}`}>{gameId.trim().length}/9</span>
+    <div className="relative">
+      <div className="absolute inset-0 z-30 flex items-center justify-center px-4">
+        <div className="px-6 py-5 rounded-3xl border border-white/20 bg-slate-950/85 backdrop-blur-2xl shadow-2xl text-center text-white max-w-xl">
+          <div className="text-xs uppercase tracking-[0.45em] text-primary mb-3">Coming Soon</div>
+          <h2 className="font-display text-xl md:text-2xl">Private Redeem experience is under construction</h2>
+          <p className="text-white/60 text-sm mt-3">We’re polishing a streamlined redemption flow. Until then, you can still copy your ID or hop into the official site below.</p>
+        </div>
+      </div>
+
+      <div className="space-y-4 blur-sm pointer-events-none select-none">
+        <div className="glass rounded-2xl px-4 md:px-6 py-4 border border-white/10 shadow-lg flex flex-col md:flex-row md:items-end gap-3">
+          <div className="flex-1">
+            <label className="text-xs uppercase tracking-wider text-white/50 mb-2 block">Game ID</label>
+            <Input
+              value={gameId}
+              onChange={(e) => setGameId(e.target.value)}
+              placeholder="Enter 9-digit game ID"
+              className="font-mono"
+              maxLength={9}
+            />
+            <div className="flex items-center gap-3 mt-2 text-xs text-white/60">
+              <span>Status:</span>
+              <span className={`${saving ? 'text-primary' : savedAt ? 'text-emerald-300' : 'text-white/60'}`}>{saving ? 'Saving…' : savedAt ? 'Saved' : 'Idle'}</span>
+              <span className="ml-3">Length:</span>
+              <span className={`${isNineDigits ? 'text-emerald-300' : 'text-amber-300'}`}>{gameId.trim().length}/9</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 md:gap-3">
+            <Button variant="ghost" onClick={copyId}>Copy ID</Button>
+            <a 
+              className="button h-11 grid place-items-center px-4 rounded-xl" 
+              href={bookmarkletHref} 
+              title="Drag to bookmarks bar to autofill & login on the official site"
+            >
+              Autofill
+            </a>
+            <Button onClick={attemptAutofill} disabled={!isNineDigits || !iframeReady} variant="subtle">Retry fill</Button>
+            <Button onClick={openInNewTab}>Open site</Button>
           </div>
         </div>
-        <div className="flex items-center gap-2 md:gap-3">
-          <Button variant="ghost" onClick={copyId}>Copy ID</Button>
-          <a className="button h-11 grid place-items-center px-4 rounded-xl" href={bookmarkletHref} title="Drag to bookmarks bar to autofill & login on the official site">Autofill</a>
-          <Button onClick={attemptAutofill} disabled={!isNineDigits || !iframeReady} variant="subtle">Retry fill</Button>
-          <Button onClick={openInNewTab}>Open site</Button>
-        </div>
-      </div>
 
-      <div className="glass rounded-2xl border border-white/10 overflow-hidden shadow-lg">
-        <div className="px-4 py-2 text-xs text-white/60 bg-white/5 border-b border-white/10">
-          Official site: wos-giftcode.centurygame.com
+        <div className="glass rounded-2xl border border-white/10 overflow-hidden shadow-lg">
+          <div className="px-4 py-2 text-xs text-white/60 bg-white/5 border-b border-white/10">
+            Official site: wos-giftcode.centurygame.com
+          </div>
+          <div className="relative h-[70vh] bg-black/20">
+            <iframe
+              title="Gift Code Center"
+              src={SITE_URL}
+              className="w-full h-full"
+              sandbox="allow-scripts allow-forms allow-popups"
+              ref={iframeRef}
+              onLoad={() => setIframeReady(true)}
+            />
+            {!isNineDigits && (
+              <div className="absolute inset-x-0 top-2 mx-auto w-fit text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">
+                Enter a 9-digit ID to use Autofill
+              </div>
+            )}
+          </div>
         </div>
-        <div className="relative h-[70vh] bg-black/20">
-          <iframe
-            title="Gift Code Center"
-            src={SITE_URL}
-            className="w-full h-full"
-            sandbox="allow-scripts allow-forms allow-popups"
-            ref={iframeRef}
-            onLoad={() => setIframeReady(true)}
-          />
-          {!isNineDigits && (
-            <div className="absolute inset-x-0 top-2 mx-auto w-fit text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">
-              Enter a 9-digit ID to use Autofill
-            </div>
-          )}
-        </div>
-      </div>
 
-      <div className="text-xs text-white/45">
-        Note: Modern browsers block typing into third‑party pages inside iframes for security. Use the Autofill bookmarklet or the Copy ID + Open site buttons.
+        <div className="text-xs text-white/45">
+          Note: Modern browsers block typing into third‑party pages inside iframes for security. Use the Autofill bookmarklet or the Copy ID + Open site buttons.
+        </div>
       </div>
     </div>
   )

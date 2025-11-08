@@ -5,12 +5,32 @@ import { Settings, Mic } from 'lucide-react'
 
 type Msg = { role: 'user' | 'assistant' | 'system'; content: string; imageUrls?: string[] }
 
-type AssistantPayload = { text: string; images: string[] }
+type AssistantPayload = {
+  text: string
+  images: string[]
+  toolFiles: Array<{ id: string; mime?: string; name?: string }>
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  const chunk = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += chunk) {
+    const slice = bytes.subarray(i, i + chunk)
+    binary += String.fromCharCode(...slice)
+  }
+  if (typeof btoa === 'function') return btoa(binary)
+  const nodeBuffer = (globalThis as any)?.Buffer
+  if (nodeBuffer) return nodeBuffer.from(binary, 'binary').toString('base64')
+  return ''
+}
 
 function extractAssistantPayload(payload: any): AssistantPayload {
   const visited = new WeakSet<object>()
   const textParts: string[] = []
   const images: string[] = []
+  const toolFiles: AssistantPayload['toolFiles'] = []
+  const allowedTextKeys = new Set(['text', 'output_text', 'content', 'caption', 'value', 'markdown', 'html'])
 
   function pushImage(src: string | undefined, mime?: string) {
     if (!src) return
@@ -26,14 +46,21 @@ function extractAssistantPayload(payload: any): AssistantPayload {
     if (!images.includes(url)) images.push(url)
   }
 
-  function walk(node: any): void {
+  function pushToolFile(id: string | undefined, mime?: string, name?: string) {
+    if (!id) return
+    if (!toolFiles.find((t) => t.id === id)) toolFiles.push({ id, mime, name })
+  }
+
+  function walk(node: any, ctx?: string): void {
     if (node == null) return
     if (typeof node === 'string') {
+      if (!ctx || !allowedTextKeys.has(ctx)) return
       const trimmed = node.trim()
       if (!trimmed) return
+      if (/^[A-Za-z0-9_.-]+$/.test(trimmed) && !/[\s,.;:!?]/.test(trimmed)) return
       if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
         try {
-          walk(JSON.parse(trimmed))
+          walk(JSON.parse(trimmed), ctx)
         } catch {
           textParts.push(trimmed)
         }
@@ -44,7 +71,7 @@ function extractAssistantPayload(payload: any): AssistantPayload {
     }
 
     if (Array.isArray(node)) {
-      node.forEach(walk)
+      node.forEach((value) => walk(value, ctx))
       return
     }
 
@@ -52,21 +79,35 @@ function extractAssistantPayload(payload: any): AssistantPayload {
       if (visited.has(node)) return
       visited.add(node)
 
-      if (typeof (node as any).text === 'string') walk((node as any).text)
+      if (typeof (node as any).text === 'string') walk((node as any).text, 'text')
+      if (typeof (node as any).output_text === 'string') walk((node as any).output_text, 'output_text')
       if (typeof (node as any).b64_json === 'string') pushImage((node as any).b64_json, (node as any).mime_type)
       if (typeof (node as any).imageBase64 === 'string') pushImage((node as any).imageBase64, (node as any).mimeType)
       if (typeof (node as any).image_url === 'string') pushImage((node as any).image_url)
       if (typeof (node as any).url === 'string' && /\.(png|jpe?g|gif|webp)(\?|$)/i.test((node as any).url)) pushImage((node as any).url)
+      if (
+        (typeof (node as any).type === 'string' && (node as any).type === 'tool_file' && typeof (node as any).file_id === 'string') ||
+        (typeof (node as any).file_id === 'string' && (
+          (typeof (node as any).mime_type === 'string' && (node as any).mime_type.startsWith('image/')) ||
+          (typeof (node as any).content_type === 'string' && (node as any).content_type.startsWith('image/')) ||
+          (typeof (node as any).file_name === 'string' && /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test((node as any).file_name))
+        ))
+      ) {
+        const id = (node as any).file_id as string
+        const mime = (node as any).mime_type || (node as any).content_type
+        const name = (node as any).file_name
+        pushToolFile(id, mime, name)
+      }
 
-      Object.values(node).forEach((value) => {
-        if (typeof value === 'string' || typeof value === 'object') walk(value)
+      Object.entries(node).forEach(([key, value]) => {
+        if (typeof value === 'string' || typeof value === 'object' || Array.isArray(value)) walk(value, key)
       })
     }
   }
 
   walk(payload)
   const text = textParts.join('\n\n').trim()
-  return { text, images }
+  return { text, images, toolFiles }
 }
 
 export default function ChatAi() {
@@ -111,14 +152,33 @@ export default function ChatAi() {
       })
 
       const assistant = extractAssistantPayload(data)
-      const cleaned = assistant.text || (assistant.images.length ? '' : 'I could not parse the response.')
+      const cleaned = assistant.text || (assistant.images.length || assistant.toolFiles.length ? '' : 'I could not parse the response.')
+
+      let urls = assistant.images
+      if (!urls.length && assistant.toolFiles.length) {
+        try {
+          const responses = await Promise.all(
+            assistant.toolFiles.map(async (file) => {
+              const response = await api.get<ArrayBuffer>(`/ai/tool-file/${file.id}`, {
+                responseType: 'arraybuffer'
+              })
+              const mime = file.mime || response.headers['content-type'] || 'image/png'
+              const base64 = arrayBufferToBase64(response.data)
+              return base64 ? `data:${mime};base64,${base64}` : ''
+            })
+          )
+          urls = responses.filter(Boolean)
+        } catch (err) {
+          console.error('Failed to fetch tool files', err)
+        }
+      }
 
       setMessages((m) => [
         ...m,
         {
           role: 'assistant',
           content: cleaned,
-          imageUrls: assistant.images.length ? assistant.images : undefined
+          imageUrls: urls.length ? urls : undefined
         }
       ])
     } catch (e: any) {

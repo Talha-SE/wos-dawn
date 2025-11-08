@@ -5,52 +5,188 @@ type Language = { code: string; label: string }
 
 const LANGUAGES: Language[] = [
   { code: 'en', label: 'English' },
-  { code: 'hi', label: 'हिन्दी (Hindi)' },
+  { code: 'zh-CN', label: '中文 (Simplified Chinese)' },
+  { code: 'zh-TW', label: '中文 (Traditional Chinese)' },
+  { code: 'ja', label: '日本語 (Japanese)' },
+  { code: 'ko', label: '한국어 (Korean)' },
   { code: 'es', label: 'Español' },
   { code: 'fr', label: 'Français' },
   { code: 'de', label: 'Deutsch' },
   { code: 'pt', label: 'Português' },
-  { code: 'ja', label: '日本語 (Japanese)' },
-  { code: 'zh-CN', label: '中文 (Simplified Chinese)' },
-  { code: 'zh-TW', label: '中文 (Traditional Chinese)' },
-  { code: 'ru', label: 'Русский' },
-  { code: 'ar', label: 'العربية (Arabic)' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'ko', label: '한국어 (Korean)' },
   { code: 'tr', label: 'Türkçe' },
   { code: 'vi', label: 'Tiếng Việt' },
   { code: 'th', label: 'ไทย (Thai)' },
   { code: 'ms', label: 'Bahasa Melayu' },
   { code: 'id', label: 'Bahasa Indonesia' },
   { code: 'pl', label: 'Polski' },
-  { code: 'uk', label: 'Українська' }
+  { code: 'uk', label: 'Українська' },
+  { code: 'hi', label: 'हिन्दी (Hindi)' },
+  { code: 'nl', label: 'Nederlands' },
+  { code: 'sv', label: 'Svenska' },
+  { code: 'no', label: 'Norsk' },
+  { code: 'da', label: 'Dansk' },
+  { code: 'fi', label: 'Suomi' },
+  { code: 'cs', label: 'Čeština' },
+  { code: 'hu', label: 'Magyar' },
+  { code: 'ro', label: 'Română' },
+  { code: 'el', label: 'Ελληνικά (Greek)' },
+  { code: 'he', label: 'עברית (Hebrew)' },
+  { code: 'fa', label: 'فارسی (Persian)' },
+  { code: 'bn', label: 'বাংলা (Bengali)' },
+  { code: 'ta', label: 'தமிழ் (Tamil)' },
+  { code: 'mr', label: 'मराठी (Marathi)' },
+  { code: 'gu', label: 'ગુજરાતી (Gujarati)' },
+  { code: 'sw', label: 'Kiswahili' },
+  { code: 'sk', label: 'Slovenčina (Slovak)' },
+  { code: 'bg', label: 'Български (Bulgarian)' },
+  { code: 'am', label: 'አማርኛ (Amharic)' },
+  { code: 'af', label: 'Afrikaans' },
+  { code: 'si', label: 'සිංහල (Sinhala)' },
+  { code: 'az', label: 'Azərbaycan dili (Azerbaijani)' },
+  { code: 'hy', label: 'Հայերեն (Armenian)' },
+  { code: 'ka', label: 'ქართული (Georgian)' },
+  { code: 'kk', label: 'Қазақ тілі (Kazakh)' },
+  { code: 'ky', label: 'Кыргызча (Kyrgyz)' },
+  { code: 'km', label: 'ភាសាខ្មែរ (Khmer)' },
+  { code: 'lo', label: 'ລາວ (Lao)' },
+  { code: 'mn', label: 'Монгол (Mongolian)' },
+  { code: 'my', label: 'မြန်မာစာ (Burmese)' },
+  { code: 'ne', label: 'नेपाली (Nepali)' },
+  { code: 'dv', label: 'ދިވެހި (Dhivehi)' },
+  { code: 'ps', label: 'پښتو (Pashto)' },
+  { code: 'ur', label: 'اردو (Urdu)' },
+  { code: 'tg', label: 'Тоҷикӣ (Tajik)' },
+  { code: 'tk', label: 'Türkmençe (Turkmen)' },
+  { code: 'uz', label: "Oʻzbek tili (Uzbek)" },
+  { code: 'tl', label: 'Filipino (Tagalog)' },
+  { code: 'dz', label: 'རྫོང་ཁ (Dzongkha)' }
 ]
 
 const DEFAULT_OPTION: Language = { code: '__default', label: 'Default' }
 const LANGUAGE_OPTIONS: Language[] = [DEFAULT_OPTION, ...LANGUAGES]
 
 const COUNTRY_TO_LANG: Record<string, string[]> = {
-  US: ['en'], GB: ['en'], AU: ['en'], NZ: ['en'], IE: ['en'],
+  // Americas
+  US: ['en'],
   CA: ['en', 'fr'],
-  IN: ['hi', 'en'], PK: ['en'], BD: ['en'],
-  ES: ['es'], MX: ['es'], AR: ['es'], CO: ['es'], CL: ['es'], PE: ['es'], VE: ['es'], UY: ['es'], PY: ['es'], BO: ['es'], EC: ['es'], GT: ['es'], HN: ['es'], SV: ['es'], NI: ['es'], CR: ['es'], DO: ['es'], PA: ['es'], PR: ['es'],
-  FR: ['fr'], BE: ['fr', 'nl'], CH: ['de', 'fr', 'it'],
-  DE: ['de'], AT: ['de'],
-  PT: ['pt'], BR: ['pt'],
-  JP: ['ja'],
-  CN: ['zh-CN'], HK: ['zh-TW', 'zh-CN'], TW: ['zh-TW'], SG: ['zh-CN', 'en'],
-  RU: ['ru'],
-  SA: ['ar'], AE: ['ar'], EG: ['ar'], QA: ['ar'], KW: ['ar'], JO: ['ar'], MA: ['ar'], DZ: ['ar'], TN: ['ar'], IQ: ['ar'],
+  MX: ['es'],
+  GT: ['es'],
+  HN: ['es'],
+  SV: ['es'],
+  NI: ['es'],
+  CR: ['es'],
+  DO: ['es'],
+  PA: ['es'],
+  PR: ['es'],
+  AR: ['es'],
+  BO: ['es'],
+  CL: ['es'],
+  CO: ['es'],
+  EC: ['es'],
+  PE: ['es'],
+  PY: ['es'],
+  UY: ['es'],
+  VE: ['es'],
+  BR: ['pt'],
+
+  // Europe
+  GB: ['en'],
+  IE: ['en'],
+  ES: ['es'],
+  FR: ['fr'],
+  BE: ['fr', 'nl'],
+  NL: ['nl'],
+  LU: ['fr', 'de'],
+  DE: ['de'],
+  AT: ['de'],
+  CH: ['de', 'fr', 'it'],
+  PT: ['pt'],
   IT: ['it'],
-  KR: ['ko'],
-  TR: ['tr'],
-  VN: ['vi'],
-  TH: ['th'],
-  MY: ['ms', 'en'],
-  ID: ['id'],
-  PH: ['en'],
   PL: ['pl'],
-  UA: ['uk']
+  CZ: ['cs'],
+  SK: ['sk', 'cs'],
+  HU: ['hu'],
+  RO: ['ro'],
+  BG: ['bg'],
+  GR: ['el'],
+  SE: ['sv'],
+  NO: ['no'],
+  DK: ['da'],
+  FI: ['fi'],
+  UA: ['uk'],
+  RU: ['ru'],
+  CY: ['el', 'tr'],
+
+  // Middle East & North Africa
+  MA: ['ar'],
+  DZ: ['ar'],
+  TN: ['ar'],
+  EG: ['ar'],
+  SA: ['ar'],
+  AE: ['ar'],
+  QA: ['ar'],
+  KW: ['ar'],
+  BH: ['ar'],
+  OM: ['ar'],
+  JO: ['ar'],
+  SY: ['ar'],
+  LB: ['ar'],
+  IQ: ['ar'],
+  YE: ['ar'],
+  IR: ['fa'],
+  TR: ['tr'],
+  IL: ['he'],
+  PS: ['ar'],
+
+  // South & Central Asia
+  AF: ['fa', 'ps'],
+  AM: ['hy'],
+  AZ: ['az'],
+  GE: ['ka'],
+  KZ: ['kk', 'ru'],
+  KG: ['ky', 'ru'],
+  TJ: ['tg'],
+  TM: ['tk'],
+  UZ: ['uz'],
+  NP: ['ne'],
+  IN: ['hi', 'en', 'ta', 'mr', 'bn', 'gu'],
+  PK: ['ur', 'en'],
+  BD: ['bn', 'en'],
+  LK: ['si', 'ta', 'en'],
+  MV: ['dv'],
+  BT: ['dz'],
+
+  // East & Southeast Asia
+  CN: ['zh-CN'],
+  HK: ['zh-TW', 'zh-CN'],
+  MO: ['zh-CN', 'pt'],
+  TW: ['zh-TW'],
+  JP: ['ja'],
+  KP: ['ko'],
+  KR: ['ko'],
+  MN: ['mn'],
+  ID: ['id'],
+  MY: ['ms', 'en'],
+  SG: ['en', 'zh-CN', 'ms', 'ta'],
+  BN: ['ms'],
+  TH: ['th'],
+  LA: ['lo'],
+  KH: ['km'],
+  VN: ['vi'],
+  PH: ['tl', 'en'],
+  TL: ['pt'],
+  MM: ['my'],
+
+  // Oceania & others
+  AU: ['en'],
+  NZ: ['en'],
+  KE: ['sw', 'en'],
+  TZ: ['sw'],
+  UG: ['sw', 'en'],
+  ZA: ['en', 'af'],
+  ET: ['am', 'en'],
+  NG: ['en'],
+  GH: ['en'],
 }
 
 declare global {
@@ -71,7 +207,13 @@ export default function TranslateSwitcher() {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
   const [autoEnabled, setAutoEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('wos_auto_translate') === '1'
+    if (typeof window === 'undefined') return true
+    const stored = localStorage.getItem('wos_auto_translate')
+    if (stored === null) {
+      localStorage.setItem('wos_auto_translate', '1')
+      return true
+    }
+    return stored === '1'
   })
 
   function persistAuto(v: boolean) {
@@ -222,12 +364,12 @@ export default function TranslateSwitcher() {
           persistAuto(next)
           if (next && ready) detectAndApply()
         }}
-        className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${autoEnabled ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'}`}
+        className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${autoEnabled ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'}`}
         aria-pressed={autoEnabled}
         title="Auto-detect language by IP"
       >
-        <Check size={14} className={`${autoEnabled ? 'opacity-100' : 'opacity-50'}`} />
-        <span>Auto Translate</span>
+        <Check size={14} className={`${autoEnabled ? 'text-emerald-300 opacity-100' : 'opacity-50'}`} />
+        <span className={autoEnabled ? 'text-emerald-300 font-medium' : ''}>Auto Translate</span>
       </button>
       <div ref={menuRef} className="relative">
         <div id="google_translate_element_container" className="hidden" />

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import api, { setAuthToken } from '../services/api'
 
-type User = { id: string; email: string; gameId?: string; automationEnabled?: boolean }
+type User = { id: string; email: string; gameId?: string; gameName?: string; automationEnabled?: boolean }
 
 type Ctx = {
   token: string | null

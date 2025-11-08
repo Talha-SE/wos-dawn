@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Gift, User, Menu, Shield, MessageSquare, ChevronDown } from 'lucide-react'
 import api from '../services/api'
+import logo from '../assets/wos-dawn.png'
 
 type JoinedRoom = { code: string; name: string; state: number }
 
@@ -30,9 +31,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
         <div className="flex items-center justify-between mb-6">
           {!collapsed && (
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary/60 to-primaryGlow/80 grid place-items-center text-base font-semibold text-white shadow-lg">
-                WO
-              </div>
+              <img src={logo} alt="WOS Dawn" className="h-10 w-10 rounded-2xl object-cover shadow-lg" />
               <div>
                 <div className="font-display text-base tracking-tight text-white">WOS Dawn</div>
                 <div className="text-[10px] uppercase tracking-wider text-white">Console</div>

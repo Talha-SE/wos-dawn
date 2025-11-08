@@ -9,6 +9,7 @@ import AllianceChatWindow from './AllianceChatWindow'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../state/AuthContext'
 import TranslateSwitcher from '../components/TranslateSwitcher'
+import logo from '../assets/wos-dawn.png'
 
 //
 
@@ -71,9 +72,7 @@ export default function Dashboard() {
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-8">
           <div className="flex items-center gap-4">
-            <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-primary/60 to-primaryGlow/80 grid place-items-center text-lg font-semibold text-white/95 shadow-glass">
-              WO
-            </div>
+            <img src={logo} alt="WOS Dawn" className="h-12 w-12 rounded-2xl object-cover shadow-xl" />
             <div>
               <div className="text-xs uppercase tracking-widest text-white/40">WOS Dawn</div>
               <div className="flex items-center gap-2">

@@ -6,7 +6,7 @@ import { fetchPlayerProfile } from '../services/wos';
 const router = Router();
 
 router.get('/me', requireAuth, async (req: AuthRequest, res) => {
-  const user = await User.findById(req.userId).select('email gameId automationEnabled');
+  const user = await User.findById(req.userId).select('email gameId gameName automationEnabled');
   if (!user) return res.status(404).json({ message: 'User not found' });
   res.json(user);
 });
@@ -18,7 +18,7 @@ router.put('/me/game', requireAuth, async (req: AuthRequest, res) => {
     req.userId,
     { $set: { gameId } },
     { new: true }
-  ).select('email gameId automationEnabled');
+  ).select('email gameId gameName automationEnabled');
   if (!user) return res.status(404).json({ message: 'User not found' });
   res.json(user);
 });
@@ -29,7 +29,7 @@ router.put('/me/automation', requireAuth, async (req: AuthRequest, res) => {
     req.userId,
     { $set: { automationEnabled: !!enabled } },
     { new: true }
-  ).select('email gameId automationEnabled');
+  ).select('email gameId gameName automationEnabled');
   if (!user) return res.status(404).json({ message: 'User not found' });
   res.json(user);
 });
@@ -43,6 +43,18 @@ router.get('/me/profile', requireAuth, async (req: AuthRequest, res) => {
   } catch (e: any) {
     res.status(502).json({ message: 'Failed to fetch profile', detail: e?.response?.data || e?.message });
   }
+});
+
+router.put('/me/game-name', requireAuth, async (req: AuthRequest, res) => {
+  const { gameName } = req.body as { gameName: string };
+  if (!gameName || typeof gameName !== 'string') return res.status(400).json({ message: 'gameName required' });
+  const user = await User.findByIdAndUpdate(
+    req.userId,
+    { $set: { gameName: gameName.trim() } },
+    { new: true }
+  ).select('email gameId gameName automationEnabled');
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  res.json(user);
 });
 
 export default router;

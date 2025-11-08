@@ -9,6 +9,7 @@ import adminRoutes from './routes/admin';
 import profileRoutes from './routes/profile';
 import aiRoutes from './routes/ai';
 import allianceRoutes from './routes/alliance';
+import slotsRoutes from './routes/slots';
 import { startAutoRedeemCron } from './cron/autoRedeem';
 
 async function bootstrap() {
@@ -26,6 +27,7 @@ async function bootstrap() {
   app.use('/api/profile', profileRoutes);
   app.use('/api/ai', aiRoutes);
   app.use('/api/alliance', allianceRoutes);
+  app.use('/api/slots', slotsRoutes);
 
   const server = app.listen(env.PORT, () => {
     console.log(`Server running on http://localhost:${env.PORT}`);

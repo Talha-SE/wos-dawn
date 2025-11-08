@@ -11,11 +11,13 @@ export default function ProfilePage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [gameId, setGameId] = useState(user?.gameId || '')
+  const [gameName, setGameName] = useState(user?.gameName || '')
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
   const timer = useRef<number | null>(null)
+  const nameTimer = useRef<number | null>(null)
 
-  useEffect(() => { setEmail(user?.email || ''); setGameId(user?.gameId || '') }, [user])
+  useEffect(() => { setEmail(user?.email || ''); setGameId(user?.gameId || ''); setGameName(user?.gameName || '') }, [user])
 
   useEffect(() => {
     if (timer.current) window.clearTimeout(timer.current)
@@ -35,6 +37,24 @@ export default function ProfilePage() {
     }, 600)
     return () => { if (timer.current) window.clearTimeout(timer.current) }
   }, [gameId])
+
+  useEffect(() => {
+    if (nameTimer.current) window.clearTimeout(nameTimer.current)
+    if (!gameName?.trim()) {
+      return
+    }
+    nameTimer.current = window.setTimeout(async () => {
+      try {
+        setSaving(true)
+        const { data } = await api.put('/user/me/game-name', { gameName: gameName.trim() })
+        setUser(data)
+        setSavedAt(Date.now())
+      } finally {
+        setSaving(false)
+      }
+    }, 600)
+    return () => { if (nameTimer.current) window.clearTimeout(nameTimer.current) }
+  }, [gameName])
 
   return (
     <div className="w-full">
@@ -99,13 +119,19 @@ export default function ProfilePage() {
         <section className="glass rounded-2xl px-6 py-6 md:px-8 border border-white/10 shadow-lg animate-fadeUp" style={{ animationDelay: '0.08s' }}>
           <div className="mb-5">
             <div className="badge mb-3">Game Profile</div>
-            <h2 className="font-display text-xl md:text-2xl text-white tracking-tight">Commander ID</h2>
-            <p className="subtext mt-2">Enter or update your Whiteout Survival Game ID.</p>
+            <h2 className="font-display text-xl md:text-2xl text-white tracking-tight">Commander Identity</h2>
+            <p className="subtext mt-2">Enter or update your Whiteout Survival in-game details.</p>
           </div>
           <div className="grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-6 items-end">
-            <div>
-              <label className="text-xs uppercase tracking-wider text-white/50 mb-2 block">Game ID</label>
-              <Input value={gameId} onChange={(e) => setGameId(e.target.value)} placeholder="Enter your game ID" className="font-mono" />
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs uppercase tracking-wider text-white/50 mb-2 block">Game ID</label>
+                <Input value={gameId} onChange={(e) => setGameId(e.target.value)} placeholder="Enter your game ID" className="font-mono" />
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-wider text-white/50 mb-2 block">In-game Name</label>
+                <Input value={gameName} onChange={(e) => setGameName(e.target.value)} placeholder="Enter your in-game name/tag" />
+              </div>
             </div>
             <div className="glass-soft rounded-2xl p-5 border border-white/10 space-y-3">
               <h3 className="text-sm text-white/60 uppercase tracking-wide">Sync state</h3>
@@ -116,6 +142,10 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-white/60">Active ID</span>
                 <span className="text-base font-semibold text-white/90">{user?.gameId || 'Not set'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-white/60">Active Name</span>
+                <span className="text-base font-semibold text-white/90">{user?.gameName || 'Not set'}</span>
               </div>
             </div>
           </div>
