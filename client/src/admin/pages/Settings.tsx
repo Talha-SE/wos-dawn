@@ -1,0 +1,160 @@
+import { useState, useEffect } from 'react'
+import Input from '../../components/Input'
+import Button from '../../components/Button'
+import api from '../../services/api'
+
+export default function Settings() {
+  const [secret, setSecret] = useState('')
+  const [dbBackupStatus, setDbBackupStatus] = useState<string>('')
+  const [isClearing, setIsClearing] = useState(false)
+
+  useEffect(() => {
+    setSecret(localStorage.getItem('admin_secret') || '')
+  }, [])
+
+  function save() {
+    localStorage.setItem('admin_secret', secret)
+    alert('Admin secret saved to local storage')
+  }
+
+  async function clearOldLogs() {
+    if (!confirm('Clear activity logs older than 30 days? This cannot be undone.')) return
+    setIsClearing(true)
+    try {
+      const { data } = await api.delete('/admin/clear-old-logs', {
+        headers: { 'x-admin-secret': secret }
+      })
+      alert(data.message || 'Old logs cleared successfully')
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Failed to clear old logs')
+    } finally {
+      setIsClearing(false)
+    }
+  }
+
+  async function exportAllData() {
+    try {
+      const { data } = await api.get('/admin/export-data', {
+        headers: { 'x-admin-secret': secret }
+      })
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `wos-dawn-backup-${new Date().toISOString()}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      alert('Data exported successfully')
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Failed to export data')
+    }
+  }
+
+  async function checkDatabaseHealth() {
+    try {
+      setDbBackupStatus('Checking...')
+      const { data } = await api.get('/admin/health-check', {
+        headers: { 'x-admin-secret': secret }
+      })
+      setDbBackupStatus(`✓ Database: ${data.database} | Collections: ${data.collections} | Status: ${data.status}`)
+    } catch (e: any) {
+      setDbBackupStatus('✗ Health check failed')
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-semibold text-white">Admin Settings</h1>
+
+      {/* Admin Secret Configuration */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-white">API Authentication</h2>
+        <div>
+          <label className="text-sm text-white/70 block mb-2">Admin Secret Key</label>
+          <Input
+            type="password"
+            placeholder="Enter admin secret key"
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            className="bg-white/10 border-white/20 text-white"
+          />
+          <p className="text-xs text-white/50 mt-2">
+            This secret is sent as <code className="bg-white/10 px-1 py-0.5 rounded">x-admin-secret</code> header when calling admin APIs.
+          </p>
+        </div>
+        <Button onClick={save}>Save Secret</Button>
+      </div>
+
+      {/* System Health */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-white">System Health</h2>
+        <div className="space-y-3">
+          <Button onClick={checkDatabaseHealth} variant="secondary" disabled={!secret}>
+            Check Database Health
+          </Button>
+          {dbBackupStatus && (
+            <div className="text-sm text-white/70 bg-white/5 p-3 rounded-lg">
+              {dbBackupStatus}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Data Management */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+        <h2 className="text-lg font-semibold text-white">Data Management</h2>
+        
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <h3 className="text-white font-medium mb-1">Export All Data</h3>
+              <p className="text-sm text-white/60">
+                Download a complete backup of all users, rooms, slots, and gift codes in JSON format.
+              </p>
+            </div>
+            <Button onClick={exportAllData} variant="secondary" disabled={!secret}>
+              Export JSON
+            </Button>
+          </div>
+
+          <div className="border-t border-white/10 pt-3" />
+
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <h3 className="text-white font-medium mb-1">Clear Old Activity Logs</h3>
+              <p className="text-sm text-white/60">
+                Remove activity logs older than 30 days to free up database space.
+              </p>
+            </div>
+            <Button onClick={clearOldLogs} variant="danger" disabled={!secret || isClearing}>
+              {isClearing ? 'Clearing...' : 'Clear Logs'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="rounded-2xl border border-red-600/30 bg-red-600/10 p-5 space-y-3">
+        <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
+        <p className="text-sm text-white/70">
+          Destructive actions that permanently affect the system. Use with extreme caution.
+        </p>
+        <div className="text-xs text-white/50">
+          • Permanent user/room deletions are available on respective management pages<br />
+          • Data backups should be performed regularly before major changes<br />
+          • Contact system administrator for critical operations
+        </div>
+      </div>
+
+      {/* Information */}
+      <div className="rounded-2xl border border-blue-600/30 bg-blue-600/10 p-5">
+        <h3 className="text-white font-semibold mb-2">ℹ️ Admin Access Info</h3>
+        <div className="text-sm text-white/70 space-y-1">
+          <p>• Admin secret must match the <code className="bg-white/10 px-1 py-0.5 rounded">ADMIN_SECRET</code> environment variable on the server</p>
+          <p>• All admin actions are logged and can be audited in Activity Logs</p>
+          <p>• Keep your admin credentials secure and never share them</p>
+        </div>
+      </div>
+    </div>
+  )
+}

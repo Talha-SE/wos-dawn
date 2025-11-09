@@ -296,12 +296,12 @@ export default function ChatAi() {
   }
 
   return (
-    <div className="relative flex flex-col min-h-[calc(100vh-120px)] min-h-0 mt-2 md:mt-6 overflow-hidden">
-      <div className="relative flex-1 min-h-0 overflow-hidden">
+    <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] mt-2 md:mt-6">
+      <div className="relative flex-1 overflow-hidden">
         <div
           ref={listRef}
-          className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
-          style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${composerHeight}px)` }}
+          className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5 scrollbar-elegant"
+          style={{ paddingBottom: `calc(20px + ${composerHeight}px)` }}
         >
           {messages.length === 0 && (
             <div className="flex items-center justify-center h-full text-white/45 text-sm">
@@ -367,10 +367,10 @@ export default function ChatAi() {
         )}
       </div>
 
-      <div ref={composerRef} className="pointer-events-none fixed left-0 right-0 bottom-0 flex justify-center px-4 md:px-6">
+      <div ref={composerRef} className="absolute left-0 right-0 bottom-0 flex justify-center px-4 md:px-6 pb-4 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent pt-6 pointer-events-none">
         <div className="pointer-events-auto w-full max-w-4xl">
           {showTools && (
-            <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-xl px-4 py-3">
+            <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/95 backdrop-blur-xl px-4 py-3 shadow-xl">
               <label className="flex items-center gap-2 text-xs text-white/70">
                 <span className="relative inline-flex h-5 w-9 items-center rounded-full bg-white/10 transition">
                   <input type="checkbox" className="peer absolute inset-0 opacity-0 cursor-pointer" checked={tools.web_search} onChange={(e) => setTools((t) => ({ ...t, web_search: e.target.checked }))} />
@@ -387,7 +387,7 @@ export default function ChatAi() {
               </label>
             </div>
           )}
-          <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-slate-900/85 backdrop-blur-2xl border border-white/10 shadow-2xl px-3 md:px-4 py-2.5 md:py-3">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl border border-white/10 shadow-2xl px-3 md:px-4 py-3">
             <button
               type="button"
               onClick={() => setShowTools((v) => !v)}

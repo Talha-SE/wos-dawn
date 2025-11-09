@@ -434,6 +434,234 @@ export default function AllianceChatWindow() {
     setTutorialIndex((idx) => Math.max(idx - 1, 0))
   }
 
+  // When room is joined, render full-screen chat that breaks out of dashboard container
+  if (joined?.code) {
+    return (
+      <>
+        <audio ref={notificationSoundRef} className="hidden" preload="auto">
+          <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
+        </audio>
+        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col">
+          {/* Fixed Header */}
+          <div className="flex-none bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-white/10 px-4 md:px-6 py-3.5 shadow-xl">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setJoined(null)
+                    nav('/dashboard/alliance-chat')
+                  }}
+                  className="flex-none p-2 rounded-full hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+                  title="Leave room"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base md:text-lg font-semibold text-white truncate">{joined.name}</h2>
+                  <p className="text-xs text-white/50">State {joined.state} • {joined.code}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMobileDetails((v) => !v)}
+                className="flex-none px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-white/80 hover:bg-white/10 transition-all active:scale-95"
+              >
+                {showMobileDetails ? 'Hide Info' : 'Info'}
+              </button>
+            </div>
+          </div>
+
+          {/* Info Panel (collapsible) */}
+          {showMobileDetails && (
+            <div className="flex-none bg-gradient-to-b from-slate-900 to-slate-950 border-b border-white/10 px-4 md:px-6 py-4 shadow-lg animate-in slide-in-from-top duration-200">
+              <div className="max-w-7xl mx-auto space-y-3">
+                <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-white">Room Access</div>
+                    <div className="text-xs text-white/40">Share with alliance</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="bg-slate-950/50 rounded-lg p-3 border border-white/5">
+                      <div className="text-xs text-white/40 mb-1">Room Code</div>
+                      <div className="font-mono text-sm text-white">{joined.code}</div>
+                    </div>
+                    <div className="bg-slate-950/50 rounded-lg p-3 border border-white/5">
+                      <div className="text-xs text-white/40 mb-1">Password</div>
+                      <div className="font-mono text-sm text-white">{currentPassword ? '•'.repeat(8) : 'Ask owner'}</div>
+                    </div>
+                  </div>
+                  <Button variant="subtle" onClick={copyShare} className="w-full text-sm">
+                    {copied ? '✓ Copied to Clipboard!' : 'Copy Full Invite'}
+                  </Button>
+                </div>
+                
+                {joined?.isOwner && (
+                  <div className="rounded-xl bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                      <div className="text-sm font-semibold text-red-400">Owner Controls</div>
+                    </div>
+                    <Input
+                      value={deletePwd}
+                      onChange={(e) => setDeletePwd(e.target.value)}
+                      placeholder="Enter room password to confirm deletion"
+                      type="password"
+                      className="text-sm bg-slate-950/50"
+                    />
+                    <Button
+                      variant="danger"
+                      onClick={onDeleteRoom}
+                      disabled={!deletePwd.trim() || deleting}
+                      className="w-full text-sm"
+                    >
+                      {deleting ? 'Deleting Room...' : 'Delete Room Permanently'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Messages Area (scrollable) */}
+          <div
+            ref={listRef}
+            className="flex-1 overflow-y-auto overscroll-contain bg-slate-950 scrollbar-elegant"
+          >
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 space-y-3">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
+                  <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+                    <Send size={24} className="text-white/30" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white/80 mb-2">No messages yet</h3>
+                  <p className="text-sm text-white/40 max-w-xs">
+                    Start the conversation! Send a message to your alliance members.
+                  </p>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const mine = msg.senderEmail === user?.email
+                  const canDelete = !msg._id.startsWith('temp-') && (mine || joined?.isOwner)
+                  const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  
+                  return (
+                    <div key={msg._id} className={`flex ${mine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}>
+                      <div className="max-w-[85%] md:max-w-[60%] lg:max-w-[50%]">
+                        {/* Sender info for received messages */}
+                        {!mine && (
+                          <div className="text-[11px] font-medium text-blue-400/70 mb-1.5 px-4">
+                            {msg.senderEmail.split('@')[0]}
+                          </div>
+                        )}
+                        
+                        {/* Message bubble */}
+                        <div className={`relative group rounded-2xl px-4 py-3 ${
+                          mine
+                            ? 'bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/20 rounded-tr-md'
+                            : 'bg-gradient-to-br from-white/10 to-white/5 text-white/95 border border-white/10 shadow-lg rounded-tl-md'
+                        }`}>
+                          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                            {msg.content}
+                          </div>
+                          
+                          <div className={`flex items-center gap-2 mt-2 ${mine ? 'justify-end' : 'justify-start'}`}>
+                            <span className={`text-[11px] ${mine ? 'text-white/70' : 'text-white/50'}`}>
+                              {time}
+                            </span>
+                            
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => deleteMessage(msg)}
+                                disabled={deletingId === msg._id}
+                                className={`text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded ${
+                                  mine ? 'text-white/60 hover:text-white hover:bg-white/10' : 'text-white/40 hover:text-red-400 hover:bg-red-400/10'
+                                } transition disabled:opacity-40 opacity-0 group-hover:opacity-100`}
+                              >
+                                {deletingId === msg._id ? '•••' : 'Delete'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+              <div ref={bottomRef} />
+            </div>
+          </div>
+
+          {/* Fixed Typing Bar */}
+          <div className="flex-none bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 border-t border-white/10 shadow-2xl">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
+              <div className="flex items-end gap-2.5">
+                {/* Voice Button */}
+                <button
+                  type="button"
+                  onClick={toggleRecord}
+                  disabled={sending || transcribing}
+                  className={`flex-none h-12 w-12 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
+                    recording
+                      ? 'bg-red-500 text-white shadow-red-500/50 scale-110 ring-4 ring-red-500/20'
+                      : 'bg-gradient-to-br from-white/15 to-white/10 text-white/70 hover:text-white hover:from-white/20 hover:to-white/15 active:scale-95 border border-white/10'
+                  }`}
+                  title={recording ? 'Stop recording' : 'Voice message'}
+                >
+                  <Mic size={20} className={recording ? 'animate-pulse' : ''} />
+                </button>
+
+                {/* Input Field */}
+                <div className="flex-1 relative">
+                  <Input
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    placeholder={transcribing ? 'Transcribing voice...' : 'Type your message...'}
+                    disabled={transcribing}
+                    name="chat-message"
+                    autoComplete="off"
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    inputMode="text"
+                    className="w-full h-12 bg-gradient-to-br from-white/15 to-white/10 border border-white/10 focus:border-blue-500/50 focus:from-white/20 focus:to-white/15 focus:ring-2 focus:ring-blue-500/20 rounded-full px-5 py-3 pr-12 text-[15px] text-white placeholder:text-white/40 shadow-inner"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        sendMessage()
+                      }
+                    }}
+                  />
+                  {transcribing && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Send Button */}
+                <button
+                  onClick={sendMessage}
+                  disabled={!messageText.trim() || sending}
+                  className={`flex-none h-12 w-12 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
+                    messageText.trim() && !sending
+                      ? 'bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 text-white shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105 active:scale-95'
+                      : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                  }`}
+                >
+                  {sending ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Send size={20} />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  // Room selection/creation view (normal dashboard layout)
   return (
     <div className="flex flex-col gap-4 min-h-[calc(100vh-140px)] md:min-h-[calc(100vh-160px)]">
       <audio ref={notificationSoundRef} className="hidden" preload="auto">
@@ -450,163 +678,8 @@ export default function AllianceChatWindow() {
           Tutorial
         </Button>
       </div>
-      {joined?.code ? (
-        <section className="glass flex flex-col flex-1 border border-white/10 rounded-2xl px-3 md:px-6 py-3 md:py-6 shadow-lg min-h-0">
-          {/* Mobile room header */}
-          <div className="flex items-center justify-between mb-3 lg:hidden">
-            <div className="text-sm text-white/80 font-medium truncate">{joined?.name} • State {joined?.state}</div>
-            <button
-              onClick={() => setShowMobileDetails((v) => !v)}
-              className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white/80 hover:bg-white/10"
-            >
-              {showMobileDetails ? 'Hide' : 'Details'}
-            </button>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-[2.6fr_1fr] gap-4 md:gap-5 flex-1 min-h-0">
-            <div className="flex flex-col rounded-2xl border border-white/10 bg-white/5 flex-1 min-h-[320px] min-h-0">
-              <div
-                ref={listRef}
-                className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 112px)' }}
-              >
-                {messages.map((msg) => {
-                  const mine = msg.senderEmail === user?.email
-                  const canDelete = !msg._id.startsWith('temp-') && (mine || joined?.isOwner)
-                  return (
-                    <div key={msg._id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`group max-w-[70%] rounded-3xl px-4 py-2.5 border ${mine ? 'bg-gradient-to-b from-primary/30 to-primary/20 text-white border-primary/25' : 'bg-gradient-to-b from-white/10 to-white/5 text-white/95 border-white/10'}`}>
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="text-[10px] text-white/50">{mine ? 'You' : msg.senderEmail}</div>
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => deleteMessage(msg)}
-                              disabled={deletingId === msg._id}
-                              className={`text-[10px] uppercase tracking-wider ${mine ? 'text-white/60' : 'text-white/40'} hover:text-red-400 transition disabled:opacity-60`}
-                            >
-                              {deletingId === msg._id ? 'Deleting…' : 'Delete'}
-                            </button>
-                          )}
-                        </div>
-                        <div className="mt-1 flex items-baseline gap-2">
-                          {!mine && (
-                            <span className="text-[10px] text-white/50 shrink-0">
-                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(msg.createdAt).toLocaleDateString()}
-                            </span>
-                          )}
-                          <div className={`text-sm leading-relaxed whitespace-pre-wrap ${mine ? 'text-right' : 'text-left'} flex-1`}>{msg.content}</div>
-                          {mine && (
-                            <span className="text-[10px] text-white/50 shrink-0">
-                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(msg.createdAt).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-                <div ref={bottomRef} />
-              </div>
-              <div
-                className="sticky border-t border-white/10 p-3 bg-slate-900/70 backdrop-blur md:backdrop-blur-sm z-10"
-                style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)' }}
-              >
-                <div className="flex items-center gap-3 min-w-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}>
-                  <button
-                    type="button"
-                    onClick={toggleRecord}
-                    disabled={sending || transcribing}
-                    className={`h-11 w-11 rounded-2xl border transition grid place-items-center ${recording ? 'bg-primary text-white border-primary/50 animate-pulse' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
-                    title={recording ? 'Stop recording' : 'Voice typing'}
-                  >
-                    <Mic size={18} />
-                  </button>
-                  <Input
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    placeholder="Type a message"
-                    name="chat-message"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    inputMode="text"
-                    className="flex-1 min-w-0"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        sendMessage()
-                      }
-                    }}
-                  />
-                  <Button onClick={sendMessage} disabled={!messageText.trim() || sending} className="px-3 md:px-5 flex-shrink-0 h-11">
-                    {sending ? 'Sending…' : (
-                      <>
-                        <span className="md:hidden grid place-items-center"><Send size={16} /></span>
-                        <span className="hidden md:inline">Send</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Desktop details panel */}
-            <div className="hidden lg:flex flex-col space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-                <div className="text-sm text-white/70 font-medium">Share room access</div>
-                <p className="text-xs text-white/45">Copy the invite details and share with trusted alliance members.</p>
-                <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 space-y-2 text-xs text-white/70">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="uppercase tracking-wider text-white/40">Code</span>
-                    <span className="font-mono text-white text-sm break-all">{joined.code}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="uppercase tracking-wider text-white/40">Password</span>
-                    <span className="font-mono text-white text-sm">{currentPassword ? '•'.repeat(5) : 'ask owner'}</span>
-                  </div>
-                </div>
-                <Button variant="subtle" onClick={copyShare}>{copied ? 'Copied!' : 'Copy invite details'}</Button>
-              </div>
-
-              {joined?.isOwner && (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-                  <div className="text-sm text-white/70 font-medium">Owner tools</div>
-                  <Input value={deletePwd} onChange={(e) => setDeletePwd(e.target.value)} placeholder="Room password" type="password" />
-                  <Button variant="danger" onClick={onDeleteRoom} disabled={!deletePwd.trim() || deleting}>{deleting ? 'Deleting…' : 'Delete this room…'}</Button>
-                </div>
-              )}
-            </div>
-            {/* Mobile details panel (collapsible) */}
-            {showMobileDetails && (
-              <div className="lg:hidden space-y-4 mt-2">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-                  <div className="text-sm text-white/70 font-medium">Share room access</div>
-                  <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 space-y-2 text-xs text-white/70">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="uppercase tracking-wider text-white/40">Code</span>
-                      <span className="font-mono text-white text-sm break-all">{joined.code}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="uppercase tracking-wider text-white/40">Password</span>
-                      <span className="font-mono text-white text-sm">{currentPassword ? '•'.repeat(5) : 'ask owner'}</span>
-                    </div>
-                  </div>
-                  <Button variant="subtle" onClick={copyShare}>{copied ? 'Copied!' : 'Copy invite details'}</Button>
-                </div>
-                {joined?.isOwner && (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
-                    <div className="text-sm text-white/70 font-medium">Owner tools</div>
-                    <Input value={deletePwd} onChange={(e) => setDeletePwd(e.target.value)} placeholder="Room password" type="password" />
-                    <Button variant="danger" onClick={onDeleteRoom} disabled={!deletePwd.trim() || deleting}>{deleting ? 'Deleting…' : 'Delete this room…'}</Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-      ) : (
-        <>
-          <div className="glass rounded-2xl px-4 md:px-6 py-4 border border-white/10 shadow-lg">
+      
+      <div className="glass rounded-2xl px-4 md:px-6 py-4 border border-white/10 shadow-lg">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div className="flex items-center gap-2">
                 <button onClick={() => setTab('create')} className={`px-4 py-2 rounded-xl border ${tab === 'create' ? 'border-primary/50 bg-primary/20 text-white' : 'border-white/10 bg-white/5 text-white/70 hover:text-white'}`}>Create room</button>
@@ -690,10 +763,9 @@ export default function AllianceChatWindow() {
               </div>
             </section>
           )}
-        </>
-      )}
-      {showTutorial && currentTutorial && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 md:px-6">
+      
+        {showTutorial && currentTutorial && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 md:px-6">
           <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={closeTutorial} />
           <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-white/12 bg-gradient-to-b from-slate-900/95 via-slate-900/90 to-slate-950/95 shadow-2xl">
             <div className="flex items-center justify-between px-6 md:px-8 pt-6">
@@ -757,7 +829,7 @@ export default function AllianceChatWindow() {
             </div>
           </div>
         </div>
-      )}
-    </div>
-  )
+        )}
+      </div>
+    )
 }

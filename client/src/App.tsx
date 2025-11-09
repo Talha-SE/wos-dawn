@@ -5,10 +5,16 @@ import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
 import QuickRedeem from './pages/QuickRedeem'
 import { useAuth } from './state/AuthContext'
+import AdminApp from './admin/AdminApp'
 
 function Protected({ children }: { children: JSX.Element }) {
   const { token } = useAuth()
   return token ? children : <Navigate to="/login" replace />
+}
+
+function AdminProtected({ children }: { children: JSX.Element }) {
+  const ok = typeof window !== 'undefined' && localStorage.getItem('admin_session') === '1'
+  return ok ? children : <Navigate to="/login?role=admin" replace />
 }
 
 export default function App() {
@@ -24,6 +30,7 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/quick-redeem" element={<QuickRedeem />} />
           <Route path="/dashboard/*" element={<Protected><Dashboard /></Protected>} />
+          <Route path="/admin/*" element={<AdminProtected><AdminApp /></AdminProtected>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>

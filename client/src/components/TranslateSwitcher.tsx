@@ -365,8 +365,9 @@ export default function TranslateSwitcher() {
   }
 
   function restoreManual() {
-    const saved = localStorage.getItem('wos_manual_lang') || DEFAULT_OPTION.code
-    if (saved === DEFAULT_OPTION.code) {
+    const saved = localStorage.getItem('wos_manual_lang')
+    // If no manual selection saved or it's default, clear everything
+    if (!saved || saved === DEFAULT_OPTION.code) {
       clearGoogTransCookies()
       setCurrent(DEFAULT_OPTION)
       setOpen(false)
@@ -375,6 +376,10 @@ export default function TranslateSwitcher() {
       if (select) {
         select.selectedIndex = 0
         select.dispatchEvent(new Event('change'))
+      }
+      // Force page reload to clear any translation artifacts
+      if (document.body.classList.contains('translated-ltr') || document.body.classList.contains('translated-rtl')) {
+        window.location.reload()
       }
       return
     }
@@ -396,12 +401,32 @@ export default function TranslateSwitcher() {
         onClick={() => {
           const next = !autoEnabled
           persistAuto(next)
-          if (next && ready) detectAndApply()
-          if (!next && ready) restoreManual()
+          if (next && ready) {
+            // Turning auto ON - detect and apply
+            detectAndApply()
+          } else {
+            // Turning auto OFF - restore manual or clear to default
+            const manualLang = localStorage.getItem('wos_manual_lang')
+            if (!manualLang || manualLang === DEFAULT_OPTION.code) {
+              // No manual selection, go back to default (no translation)
+              clearGoogTransCookies()
+              setCurrent(DEFAULT_OPTION)
+              const select = document.querySelector<HTMLSelectElement>('#google_translate_element_container select')
+              if (select) {
+                select.selectedIndex = 0
+                select.dispatchEvent(new Event('change'))
+              }
+              // Reload to ensure clean state
+              setTimeout(() => window.location.reload(), 100)
+            } else {
+              // Restore the manual selection
+              restoreManual()
+            }
+          }
         }}
         className={`flex items-center gap-2 rounded-full border px-2.5 py-2 text-sm whitespace-nowrap transition ${autoEnabled ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'}`}
         aria-pressed={autoEnabled}
-        title="Auto-detect language by IP"
+        title={autoEnabled ? 'Disable auto-translate' : 'Enable auto-translate by IP detection'}
       >
         <Check size={14} className={`${autoEnabled ? 'text-emerald-300 opacity-100' : 'opacity-50'}`} />
         <span className={`hidden sm:inline ${autoEnabled ? 'text-emerald-300 font-medium' : ''}`}>Auto Translate</span>

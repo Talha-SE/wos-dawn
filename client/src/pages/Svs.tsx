@@ -3,7 +3,7 @@ import Input from '../components/Input'
 import Button from '../components/Button'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
-import { Clock, ShieldCheck, User as UserIcon, MapPin } from 'lucide-react'
+import { Clock, ShieldCheck, User as UserIcon, MapPin, CalendarDays } from 'lucide-react'
 
 type SlotItem = {
   _id: string
@@ -45,6 +45,8 @@ export default function Svs() {
   const map = useMemo(() => new Map(items.map((i) => [i.slotIndex, i])), [items])
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [pendingIndex, setPendingIndex] = useState<number | null>(null)
+  const [durationInput, setDurationInput] = useState<string>('30')
+  const [durationBySlot, setDurationBySlot] = useState<Record<number, number>>({})
 
   useEffect(() => {
     setGameId(user?.gameId || '')
@@ -68,6 +70,7 @@ export default function Svs() {
     if (!stateName.trim() || !allianceName.trim()) return
     setPendingIndex(i)
     setConfirmOpen(true)
+    setDurationInput('30')
   }
 
   async function reserve(i: number) {
@@ -83,6 +86,8 @@ export default function Svs() {
         assignedPlayerName: playerName.trim() || undefined,
       })
       await load()
+      const parsed = Math.max(30, Number(durationInput) || 30)
+      setDurationBySlot((prev) => ({ ...prev, [i]: parsed }))
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to reserve'
       alert(msg)
@@ -179,6 +184,12 @@ export default function Svs() {
                         <span className="opacity-60">State {taken.state}</span>
                       </div>
                       <div className="text-[11px] text-white/70 truncate">{taken.allianceName}</div>
+                      {durationBySlot[i] && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-white/70">
+                          <CalendarDays size={12} className="opacity-80" />
+                          <span>Duration: {durationBySlot[i]} days</span>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="mt-3 flex items-center justify-between">
@@ -204,6 +215,16 @@ export default function Svs() {
                 <span className="font-semibold text-white"> {allianceName || '—'}</span> in
                 <span className="font-semibold text-white"> state {stateName || '—'}</span>?
               </p>
+              <div className="mt-4 space-y-2">
+                <label className="text-xs uppercase tracking-wider text-white/50 block">Duration (days, min 30)</label>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-white/80 flex items-center gap-2 focus-within:border-primary/50 focus-within:bg-white/10 transition-colors">
+                  <CalendarDays size={16} className="text-primary/70" />
+                  <Input type="number" min={30} value={durationInput} onChange={(e) => setDurationInput(e.target.value)} placeholder="30" className="bg-transparent border-none focus:ring-0 px-0 w-full" />
+                </div>
+                {Number(durationInput) < 30 && (
+                  <div className="text-[11px] text-red-300">Minimum duration is 30 days.</div>
+                )}
+              </div>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <Button
                   variant="ghost"
@@ -214,7 +235,7 @@ export default function Svs() {
                 </Button>
                 <Button
                   onClick={() => { if (pendingIndex !== null) reserve(pendingIndex) }}
-                  disabled={reserving !== null}
+                  disabled={reserving !== null || !(Number(durationInput) >= 30)}
                   className="h-11 rounded-xl"
                 >
                   {reserving !== null ? 'Reserving…' : 'Confirm'}

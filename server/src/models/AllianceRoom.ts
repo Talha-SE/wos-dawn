@@ -6,6 +6,8 @@ export interface AllianceRoomDoc extends Document {
   state: number
   passwordHash: string
   createdBy: mongoose.Types.ObjectId
+  suspended: boolean
+  suspendedUntil?: Date
   createdAt: Date
 }
 
@@ -15,6 +17,8 @@ const AllianceRoomSchema = new Schema<AllianceRoomDoc>({
   state: { type: Number, required: true, index: true },
   passwordHash: { type: String, required: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  suspended: { type: Boolean, default: false },
+  suspendedUntil: { type: Date },
   createdAt: { type: Date, default: Date.now },
 })
 

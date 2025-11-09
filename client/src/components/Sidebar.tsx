@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Gift, User, Menu, Shield, MessageSquare, ChevronDown } from 'lucide-react'
+import { Gift, User, Menu, Shield, MessageSquare, ChevronDown, X } from 'lucide-react'
 import api from '../services/api'
 import logo from '../assets/wos-dawn.png'
 import { useAuth } from '../state/AuthContext'
@@ -81,29 +81,52 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   }, [loadRooms])
 
   return (
-    <aside className={`fixed left-0 top-0 bottom-0 z-40 md:z-20 bg-slate-900/95 border-r border-white/10 transition-all duration-300 w-64 ${collapsed ? 'md:w-20' : 'md:w-64'} transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
-      <div className="h-full flex flex-col px-4 py-6 overflow-hidden">
-        <div className="flex items-center justify-between mb-6">
-          {!collapsed && (
-            <div className="flex items-center gap-3">
-              <img src={logo} alt="WOS Dawn" className="h-10 w-10 rounded-2xl object-cover shadow-lg" />
-              <div>
-                <div className="font-display text-base tracking-tight text-white">WOS Dawn</div>
-                <div className="text-[10px] uppercase tracking-wider text-white">Console</div>
+    <aside className={`fixed left-0 top-0 bottom-0 z-40 md:z-20 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-white/10 shadow-2xl transition-all duration-300 ${collapsed ? 'md:w-20' : 'md:w-64'} w-64 transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      <div className="h-full flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex-none px-4 py-5 border-b border-white/10 bg-gradient-to-r from-slate-800/50 to-slate-900/50">
+          <div className="flex items-center justify-between">
+            {!collapsed && (
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <img src={logo} alt="WOS Dawn" className="h-11 w-11 rounded-xl object-cover shadow-lg ring-2 ring-blue-500/20" />
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-slate-900" />
+                </div>
+                <div>
+                  <div className="font-semibold text-base text-white">WOS Dawn</div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-blue-400/70 font-medium">Command Center</div>
+                </div>
               </div>
-            </div>
-          )}
-          <button
-            onClick={() => { if (onMobileClose) onMobileClose(); else onToggle() }}
-            className={`${collapsed ? 'mx-auto' : ''} h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-white transition hover:border-primary/40 hover:bg-white/10 grid place-items-center`}
-            aria-label="Toggle sidebar"
-          >
-            <Menu size={16} />
-          </button>
+            )}
+            {collapsed && (
+              <div className="mx-auto relative">
+                <img src={logo} alt="WOS Dawn" className="h-11 w-11 rounded-xl object-cover shadow-lg ring-2 ring-blue-500/20" />
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-slate-900" />
+              </div>
+            )}
+            <button
+              onClick={() => { if (mobileOpen && onMobileClose) onMobileClose(); else onToggle() }}
+              className={`${collapsed ? 'hidden md:grid' : ''} h-9 w-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/30 text-white/70 hover:text-white transition-all grid place-items-center active:scale-95`}
+              aria-label="Toggle sidebar"
+            >
+              <Menu size={16} />
+            </button>
+            {/* Mobile close button */}
+            {mobileOpen && (
+              <button
+                onClick={onMobileClose}
+                className="md:hidden h-9 w-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white transition-all grid place-items-center"
+                aria-label="Close menu"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
-        <nav className={`flex-1 overflow-y-auto ${collapsed ? 'flex flex-col items-center gap-2' : 'flex flex-col gap-1'} scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent`}>
-          {!collapsed && <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-white font-medium">Main</div>}
+        {/* Navigation */}
+        <nav className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20 px-3 py-4 ${collapsed ? 'flex flex-col items-center gap-2' : 'flex flex-col gap-0.5'}`}>
+          {!collapsed && <div className="px-3 py-2 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Main</div>}
           <NavItem
             to="/dashboard/profile"
             active={pathname.includes('/profile')}
@@ -123,18 +146,18 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
               onNavigate={onMobileClose}
             />
           ) : (
-            <div className="flex flex-col gap-1">
-              <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-wider text-white font-medium">Redeem</div>
+            <div className="flex flex-col gap-0.5">
+              <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Redeem</div>
               <button
-                className={`relative flex items-center gap-3 px-3 py-2 rounded-lg ${pathname.includes('/redeem') ? 'bg-white/10 text-white' : 'text-white hover:bg-white/5'} justify-between text-white`}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${pathname.includes('/redeem') ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white border border-blue-500/20 shadow-lg shadow-blue-500/5' : 'text-white/80 hover:text-white hover:bg-white/5'} justify-between`}
                 onClick={() => setOpenRedeem((v) => !v)}
                 aria-expanded={openRedeem}
               >
                 <span className="flex items-center gap-3">
                   <span className="grid place-items-center"><Gift size={18} /></span>
-                  <span className="text-white">Redeem Gift</span>
+                  <span className="font-medium">Redeem Gift</span>
                 </span>
-                <span className={`transition-transform ${openRedeem ? 'rotate-180' : ''}`}><ChevronDown size={16} /></span>
+                <span className={`transition-transform duration-200 ${openRedeem ? 'rotate-180' : ''}`}><ChevronDown size={14} /></span>
               </button>
               {openRedeem && (
                 <div className="pl-6 flex flex-col gap-1 text-white">
@@ -159,7 +182,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             </div>
           )}
 
-          {!collapsed && <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-wider text-white font-medium">Utilities</div>}
+          {!collapsed && <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Utilities</div>}
           <NavItem
             to="/dashboard/svs"
             active={pathname.includes('/svs')}
@@ -196,8 +219,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
               />
             </>
           ) : (
-            <div className="flex flex-col gap-1">
-              <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-wider text-white font-medium">Alliance</div>
+            <div className="flex flex-col gap-0.5">
+              <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Alliance</div>
               <NavItem
                 to="/dashboard/alliance-chat"
                 active={pathname === '/dashboard/alliance-chat'}
@@ -207,15 +230,15 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 onNavigate={onMobileClose}
               />
               <button
-                className={`relative flex items-center gap-3 px-3 py-2 rounded-lg ${pathname.startsWith('/dashboard/alliance-chat/') ? 'bg-white/10 text-white' : 'text-white hover:bg-white/5'} justify-between text-white`}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${pathname.startsWith('/dashboard/alliance-chat/') ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white border border-blue-500/20 shadow-lg shadow-blue-500/5' : 'text-white/80 hover:text-white hover:bg-white/5'} justify-between`}
                 onClick={() => setOpenJoined((v) => !v)}
                 aria-expanded={openJoined}
               >
                 <span className="flex items-center gap-3">
                   <span className="grid place-items-center"><MessageSquare size={18} /></span>
-                  <span className="text-white">Joined Rooms</span>
+                  <span className="font-medium">Joined Rooms</span>
                 </span>
-                <span className={`transition-transform ${openJoined ? 'rotate-180' : ''}`}><ChevronDown size={16} /></span>
+                <span className={`transition-transform duration-200 ${openJoined ? 'rotate-180' : ''}`}><ChevronDown size={14} /></span>
               </button>
               {openJoined && (
                 <div className="pl-6 flex flex-col gap-1 text-white">
@@ -251,16 +274,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           )}
         </nav>
 
-        {!collapsed && (
-          <div className="mt-4 pt-4 border-t border-white/10">
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <div className="text-[10px] uppercase tracking-wider text-emerald-400/80 font-semibold mb-1">Status</div>
-              <p className="text-[11px] text-white/50 leading-relaxed">
-                Auto redemption synced. Monitor profiles in real time.
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Status card removed per request */}
       </div>
     </aside>
   )
@@ -271,7 +285,7 @@ function NavItem({ to, active, icon, label, collapsed, onNavigate }: { to: strin
     return (
       <Link
         to={to}
-        className={`grid place-items-center w-12 h-12 rounded-xl border border-white/10 ${active ? 'bg-white/15 text-white' : 'text-white hover:bg-white/10'}`}
+        className={`grid place-items-center w-12 h-12 rounded-xl transition-all ${active ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/15 text-white border border-blue-500/30 shadow-lg shadow-blue-500/10' : 'text-white/70 hover:text-white hover:bg-white/10 border border-white/10'}`}
         onClick={onNavigate}
         title={label}
       >
@@ -282,12 +296,12 @@ function NavItem({ to, active, icon, label, collapsed, onNavigate }: { to: strin
   return (
     <Link
       to={to}
-      className={`relative flex items-center gap-3 px-3 py-2 rounded-lg ${active ? 'bg-white/10 text-white' : 'text-white hover:bg-white/5'}`}
+      className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${active ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white border border-blue-500/20 shadow-lg shadow-blue-500/5' : 'text-white/80 hover:text-white hover:bg-white/5'}`}
       onClick={onNavigate}
     >
-      <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1.5 rounded-r-full ${active ? 'bg-primary' : 'bg-transparent'}`} />
+      <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full transition-all ${active ? 'bg-gradient-to-b from-blue-500 to-purple-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-transparent'}`} />
       <span className="grid place-items-center shrink-0">{icon}</span>
-      <span>{label}</span>
+      <span className="font-medium">{label}</span>
     </Link>
   )
 }

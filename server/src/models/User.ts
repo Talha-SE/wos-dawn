@@ -7,6 +7,8 @@ export interface IUser extends Document {
   gameName?: string;
   automationEnabled: boolean;
   redeemedCodes: Types.ObjectId[];
+  suspended: boolean;
+  suspendedUntil?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,7 +20,9 @@ const UserSchema = new Schema<IUser>(
     gameId: { type: String },
     gameName: { type: String },
     automationEnabled: { type: Boolean, default: false },
-    redeemedCodes: [{ type: Schema.Types.ObjectId, ref: 'GiftCode', default: [] }]
+    redeemedCodes: [{ type: Schema.Types.ObjectId, ref: 'GiftCode', default: [] }],
+    suspended: { type: Boolean, default: false },
+    suspendedUntil: { type: Date }
   },
   { timestamps: true }
 );
