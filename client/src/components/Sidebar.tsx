@@ -6,7 +6,7 @@ import logo from '../assets/wos-dawn.png'
 
 type JoinedRoom = { code: string; name: string; state: number }
 
-export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }) {
   const { pathname } = useLocation()
   const [openRedeem, setOpenRedeem] = useState(true)
   const [openJoined, setOpenJoined] = useState(true)
@@ -26,7 +26,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
     return () => { alive = false; window.removeEventListener('focus', onFocus) }
   }, [])
   return (
-    <aside className={`fixed left-0 top-0 bottom-0 transition-[width] duration-300 ${collapsed ? 'w-20' : 'w-64'} bg-slate-900/95 border-r border-white/10 z-20`}>
+    <aside className={`fixed left-0 top-0 bottom-0 z-40 md:z-20 bg-slate-900/95 border-r border-white/10 transition-all duration-300 w-64 ${collapsed ? 'md:w-20' : 'md:w-64'} transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
       <div className="h-full flex flex-col px-4 py-6 overflow-hidden">
         <div className="flex items-center justify-between mb-6">
           {!collapsed && (
@@ -39,7 +39,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
             </div>
           )}
           <button
-            onClick={onToggle}
+            onClick={() => { if (onMobileClose) onMobileClose(); else onToggle() }}
             className={`${collapsed ? 'mx-auto' : ''} h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-white transition hover:border-primary/40 hover:bg-white/10 grid place-items-center`}
             aria-label="Toggle sidebar"
           >
@@ -55,6 +55,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
             icon={<User size={18} />}
             collapsed={collapsed}
             label="Profile"
+            onNavigate={onMobileClose}
           />
 
           {collapsed ? (
@@ -64,6 +65,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
               icon={<Gift size={18} />}
               collapsed={collapsed}
               label="Redeem"
+              onNavigate={onMobileClose}
             />
           ) : (
             <div className="flex flex-col gap-1">
@@ -87,6 +89,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                     icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
                     collapsed={false}
                     label="Private Redeem"
+                    onNavigate={onMobileClose}
                   />
                   <NavItem
                     to="/dashboard/redeem/alliance"
@@ -94,6 +97,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                     icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
                     collapsed={false}
                     label="Alliance Redeem"
+                    onNavigate={onMobileClose}
                   />
                 </div>
               )}
@@ -107,6 +111,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
             icon={<Shield size={18} />}
             collapsed={collapsed}
             label="SVS"
+            onNavigate={onMobileClose}
           />
           <NavItem
             to="/dashboard/chat-ai"
@@ -114,6 +119,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
             icon={<MessageSquare size={18} />}
             collapsed={collapsed}
             label="Chat AI"
+            onNavigate={onMobileClose}
           />
           {collapsed ? (
             <>
@@ -123,6 +129,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                 icon={<MessageSquare size={18} />}
                 collapsed={collapsed}
                 label="Alliance Chat"
+                onNavigate={onMobileClose}
               />
               <NavItem
                 to="/dashboard/alliance-chat"
@@ -130,6 +137,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                 icon={<MessageSquare size={18} />}
                 collapsed={collapsed}
                 label="Joined Rooms"
+                onNavigate={onMobileClose}
               />
             </>
           ) : (
@@ -141,6 +149,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                 icon={<MessageSquare size={18} />}
                 collapsed={false}
                 label="Alliance Chat"
+                onNavigate={onMobileClose}
               />
               <button
                 className={`relative flex items-center gap-3 px-3 py-2 rounded-lg ${pathname.startsWith('/dashboard/alliance-chat/') ? 'bg-white/10 text-white' : 'text-white hover:bg-white/5'} justify-between text-white`}
@@ -166,6 +175,7 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
                       icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
                       collapsed={false}
                       label={`${r.name} • ${r.state}`}
+                      onNavigate={onMobileClose}
                     />
                   ))}
                 </div>
@@ -189,12 +199,13 @@ export default function Sidebar({ collapsed, onToggle }: { collapsed: boolean; o
   )
 }
 
-function NavItem({ to, active, icon, label, collapsed }: { to: string; active: boolean; icon: React.ReactNode; label: string; collapsed: boolean }) {
+function NavItem({ to, active, icon, label, collapsed, onNavigate }: { to: string; active: boolean; icon: React.ReactNode; label: string; collapsed: boolean; onNavigate?: () => void }) {
   if (collapsed) {
     return (
       <Link
         to={to}
         className={`grid place-items-center w-12 h-12 rounded-xl border border-white/10 ${active ? 'bg-white/15 text-white' : 'text-white hover:bg-white/10'}`}
+        onClick={onNavigate}
         title={label}
       >
         {icon}
@@ -205,6 +216,7 @@ function NavItem({ to, active, icon, label, collapsed }: { to: string; active: b
     <Link
       to={to}
       className={`relative flex items-center gap-3 px-3 py-2 rounded-lg ${active ? 'bg-white/10 text-white' : 'text-white hover:bg-white/5'}`}
+      onClick={onNavigate}
     >
       <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1.5 rounded-r-full ${active ? 'bg-primary' : 'bg-transparent'}`} />
       <span className="grid place-items-center shrink-0">{icon}</span>

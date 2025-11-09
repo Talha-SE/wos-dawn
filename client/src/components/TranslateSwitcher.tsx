@@ -231,49 +231,16 @@ export default function TranslateSwitcher() {
     try {
       const resp = await fetch('https://ipapi.co/json/')
       const geo = await resp.json()
-      const candidates: string[] = []
-
-      if (typeof geo?.languages === 'string' && geo.languages.trim()) {
-        geo.languages.split(',').forEach((lang: string) => {
-          const trimmed = lang.trim()
-          if (!trimmed) return
-          candidates.push(trimmed)
-          if (trimmed.includes('-')) candidates.push(trimmed.split('-')[0])
-        })
-      }
-
-      const countryCodes: string[] = []
-      if (geo?.country_code) countryCodes.push(String(geo.country_code).toUpperCase())
-      if (geo?.country_calling_code) {
-        const cc = String(geo.country_calling_code).replace('+', '')
-        if (cc === '1' && geo?.country_name === 'Canada') countryCodes.push('CA')
-      }
-
-      countryCodes.forEach((cc) => {
-        const mapped = COUNTRY_TO_LANG[cc]
-        if (mapped) candidates.push(...mapped)
-      })
-
-      const navLanguages = navigator.languages || (navigator.language ? [navigator.language] : [])
-      navLanguages.forEach((lang) => {
-        if (lang) {
-          candidates.push(lang)
-          if (lang.includes('-')) candidates.push(lang.split('-')[0])
-        }
-      })
-
-      candidates.push('en')
-
-      const match = candidates.map((c) => findLanguageCandidate(c)).find(Boolean)
-      if (match) {
-        applyLanguage(match)
+      const cc = String(geo?.country_code || '').toUpperCase()
+      if (cc && COUNTRY_TO_LANG[cc]?.length) {
+        const primary = COUNTRY_TO_LANG[cc][0]
+        const match = findLanguageCandidate(primary)
+        applyLanguage(match || DEFAULT_OPTION)
       } else {
-        applyLanguage(LANGUAGES[0])
+        applyLanguage(DEFAULT_OPTION)
       }
     } catch {
-      const navLanguages = navigator.languages || (navigator.language ? [navigator.language] : [])
-      const match = navLanguages.map((lang) => findLanguageCandidate(lang)).find(Boolean)
-      applyLanguage(match || LANGUAGES[0])
+      applyLanguage(DEFAULT_OPTION)
     }
   }
 
@@ -371,6 +338,7 @@ export default function TranslateSwitcher() {
           const next = !autoEnabled
           persistAuto(next)
           if (next && ready) detectAndApply()
+          if (!next && ready) applyLanguage(DEFAULT_OPTION)
         }}
         className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${autoEnabled ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'}`}
         aria-pressed={autoEnabled}

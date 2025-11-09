@@ -10,16 +10,19 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../state/AuthContext'
 import TranslateSwitcher from '../components/TranslateSwitcher'
 import logo from '../assets/wos-dawn.png'
+import { Menu } from 'lucide-react'
 
 //
 
 export default function Dashboard() {
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const { user, logout } = useAuth()
   const nav = useNavigate()
   const location = useLocation()
   const headerRef = useRef<HTMLElement | null>(null)
   const [headerHeight, setHeaderHeight] = useState(72)
+  const [isMd, setIsMd] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true)
   function getTitle(p: string) {
     if (p.includes('/profile')) return 'Profile'
     if (p.includes('/redeem/private')) return 'Private Redeem'
@@ -31,9 +34,12 @@ export default function Dashboard() {
   }
   const title = getTitle(location.pathname)
   const sidebarWidth = collapsed ? 80 : 256
-  const headerStyle: React.CSSProperties = {
+  const headerStyle: React.CSSProperties = isMd ? {
     left: `${sidebarWidth}px`,
     width: `calc(100% - ${sidebarWidth}px)`
+  } : {
+    left: 0,
+    width: '100%'
   }
   const mainStyle: React.CSSProperties = {
     paddingTop: headerHeight + 24
@@ -50,9 +56,14 @@ export default function Dashboard() {
       observer = new ResizeObserver(() => updateHeight())
       observer.observe(headerRef.current)
     }
-    window.addEventListener('resize', updateHeight)
+    const onResize = () => {
+      updateHeight()
+      setIsMd(window.innerWidth >= 768)
+      if (window.innerWidth >= 768) setMobileOpen(false)
+    }
+    window.addEventListener('resize', onResize)
     return () => {
-      window.removeEventListener('resize', updateHeight)
+      window.removeEventListener('resize', onResize)
       observer?.disconnect()
     }
   }, [])
@@ -70,8 +81,16 @@ export default function Dashboard() {
         ref={headerRef}
         style={headerStyle}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 md:px-8">
-          <div className="flex items-center gap-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-3 md:px-8 md:py-4">
+          <div className="flex items-center gap-3 md:gap-4">
+            <button
+              type="button"
+              className="md:hidden h-10 w-10 rounded-xl border border-white/10 bg-white/5 text-white grid place-items-center"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu size={18} />
+            </button>
             <img src={logo} alt="WOS Dawn" className="h-12 w-12 rounded-2xl object-cover shadow-xl" />
             <div>
               <div className="text-xs uppercase tracking-widest text-white/40">WOS Dawn</div>
@@ -90,9 +109,22 @@ export default function Dashboard() {
       </header>
 
       <div className="flex flex-1">
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
+        {/* Mobile overlay */}
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/50 backdrop-blur-[1px] md:hidden"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        <Sidebar
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((v) => !v)}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+        />
         <main
-          className={`flex-1 px-4 md:px-8 pb-10 transition-all duration-300 ${collapsed ? 'ml-20' : 'ml-64'}`}
+          className={`flex-1 px-3 md:px-8 pb-10 transition-all duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-64'}`}
           style={mainStyle}
         >
           <div className="space-y-6 animate-fadeUp" style={{ animationDelay: '0.08s' }}>
