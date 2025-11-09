@@ -1,30 +1,63 @@
 import { Link, useLocation } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Gift, User, Menu, Shield, MessageSquare, ChevronDown } from 'lucide-react'
 import api from '../services/api'
 import logo from '../assets/wos-dawn.png'
+import { useAuth } from '../state/AuthContext'
 
 type JoinedRoom = { code: string; name: string; state: number }
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }) {
   const { pathname } = useLocation()
+  const { token } = useAuth()
   const [openRedeem, setOpenRedeem] = useState(true)
   const [openJoined, setOpenJoined] = useState(true)
   const [rooms, setRooms] = useState<JoinedRoom[]>([])
+  const [loadingRooms, setLoadingRooms] = useState(false)
+  const [roomsError, setRoomsError] = useState<string | null>(null)
+  const fetchSeq = useRef(0)
+
+  const loadRooms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    const seq = ++fetchSeq.current
+
+    if (!token) {
+      setRooms([])
+      setRoomsError(null)
+      setLoadingRooms(false)
+      return
+    }
+
+    if (!silent) setLoadingRooms(true)
+
+    try {
+      const { data } = await api.get<JoinedRoom[]>('/alliance/my-rooms')
+      if (fetchSeq.current !== seq) return
+      setRooms(data || [])
+      setRoomsError(null)
+    } catch {
+      if (fetchSeq.current !== seq) return
+      if (!silent) setRooms([])
+      setRoomsError('Unable to load rooms')
+    } finally {
+      if (fetchSeq.current !== seq) return
+      if (!silent) setLoadingRooms(false)
+    }
+  }, [token])
 
   useEffect(() => {
-    let alive = true
-    async function load() {
-      try {
-        const { data } = await api.get<JoinedRoom[]>('/alliance/my-rooms')
-        if (alive) setRooms(data || [])
-      } catch { /* noop */ }
+    if (!token) {
+      setRooms([])
+      setRoomsError(null)
+      setLoadingRooms(false)
+      return
     }
-    load()
-    const onFocus = () => load()
+
+    loadRooms()
+    const onFocus = () => loadRooms({ silent: true })
     window.addEventListener('focus', onFocus)
-    return () => { alive = false; window.removeEventListener('focus', onFocus) }
-  }, [])
+    return () => { window.removeEventListener('focus', onFocus) }
+  }, [token, loadRooms])
+
   return (
     <aside className={`fixed left-0 top-0 bottom-0 z-40 md:z-20 bg-slate-900/95 border-r border-white/10 transition-all duration-300 w-64 ${collapsed ? 'md:w-20' : 'md:w-64'} transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
       <div className="h-full flex flex-col px-4 py-6 overflow-hidden">
@@ -164,8 +197,20 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
               </button>
               {openJoined && (
                 <div className="pl-6 flex flex-col gap-1 text-white">
-                  {rooms.length === 0 && (
+                  {loadingRooms && rooms.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-white/60 animate-pulse">Loading rooms…</div>
+                  )}
+                  {!loadingRooms && rooms.length === 0 && !roomsError && (
                     <div className="px-3 py-2 text-sm text-white/60">No rooms yet</div>
+                  )}
+                  {roomsError && (
+                    <button
+                      type="button"
+                      onClick={() => loadRooms()}
+                      className="px-3 py-2 text-sm text-rose-300/90 text-left hover:text-rose-200 transition"
+                    >
+                      {rooms.length === 0 ? 'Tap to retry loading rooms' : 'Reload rooms'}
+                    </button>
                   )}
                   {rooms.map((r) => (
                     <NavItem
