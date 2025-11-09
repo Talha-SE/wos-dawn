@@ -441,10 +441,10 @@ export default function AllianceChatWindow() {
         <audio ref={notificationSoundRef} className="hidden" preload="auto">
           <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
         </audio>
-        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col">
-          {/* Fixed Header */}
-          <div className="flex-none bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-b border-white/10 px-4 md:px-6 py-3.5 shadow-xl">
-            <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] mt-2 md:mt-6">
+          {/* Header Bar */}
+          <div className="flex-none mb-3 md:mb-4">
+            <div className="flex items-center justify-between gap-3 px-3 md:px-8">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <button
                   onClick={() => {
@@ -457,76 +457,74 @@ export default function AllianceChatWindow() {
                   <ChevronLeft size={20} />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-base md:text-lg font-semibold text-white truncate">{joined.name}</h2>
+                  <h2 className="text-sm md:text-base font-semibold text-white truncate">{joined.name}</h2>
                   <p className="text-xs text-white/50">State {joined.state} • {joined.code}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowMobileDetails((v) => !v)}
-                className="flex-none px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-white/80 hover:bg-white/10 transition-all active:scale-95"
+                className="flex-none px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-white/80 hover:bg-white/10 transition-all active:scale-95"
               >
-                {showMobileDetails ? 'Hide Info' : 'Info'}
+                {showMobileDetails ? 'Hide' : 'Info'}
               </button>
             </div>
+
+            {/* Info Panel (collapsible) */}
+            {showMobileDetails && (
+              <div className="mt-3 px-3 md:px-8 animate-in slide-in-from-top duration-200">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+                  <div className="text-xs font-semibold text-white/80">Room Access</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-slate-950/50 rounded-lg p-2 border border-white/5">
+                      <div className="text-[10px] text-white/40 mb-1">Code</div>
+                      <div className="font-mono text-xs text-white">{joined.code}</div>
+                    </div>
+                    <div className="bg-slate-950/50 rounded-lg p-2 border border-white/5">
+                      <div className="text-[10px] text-white/40 mb-1">Password</div>
+                      <div className="font-mono text-xs text-white">{currentPassword ? '•'.repeat(6) : 'Ask owner'}</div>
+                    </div>
+                  </div>
+                  <Button variant="subtle" onClick={copyShare} className="w-full text-xs py-2">
+                    {copied ? '✓ Copied!' : 'Copy Invite'}
+                  </Button>
+                  
+                  {joined?.isOwner && (
+                    <>
+                      <div className="border-t border-white/10 pt-3 mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                          <div className="text-xs font-semibold text-red-400">Owner Controls</div>
+                        </div>
+                        <Input
+                          value={deletePwd}
+                          onChange={(e) => setDeletePwd(e.target.value)}
+                          placeholder="Password to delete"
+                          type="password"
+                          className="text-xs bg-slate-950/50 h-9 mb-2"
+                        />
+                        <Button
+                          variant="danger"
+                          onClick={onDeleteRoom}
+                          disabled={!deletePwd.trim() || deleting}
+                          className="w-full text-xs py-2"
+                        >
+                          {deleting ? 'Deleting...' : 'Delete Room'}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Info Panel (collapsible) */}
-          {showMobileDetails && (
-            <div className="flex-none bg-gradient-to-b from-slate-900 to-slate-950 border-b border-white/10 px-4 md:px-6 py-4 shadow-lg animate-in slide-in-from-top duration-200">
-              <div className="max-w-7xl mx-auto space-y-3">
-                <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold text-white">Room Access</div>
-                    <div className="text-xs text-white/40">Share with alliance</div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="bg-slate-950/50 rounded-lg p-3 border border-white/5">
-                      <div className="text-xs text-white/40 mb-1">Room Code</div>
-                      <div className="font-mono text-sm text-white">{joined.code}</div>
-                    </div>
-                    <div className="bg-slate-950/50 rounded-lg p-3 border border-white/5">
-                      <div className="text-xs text-white/40 mb-1">Password</div>
-                      <div className="font-mono text-sm text-white">{currentPassword ? '•'.repeat(8) : 'Ask owner'}</div>
-                    </div>
-                  </div>
-                  <Button variant="subtle" onClick={copyShare} className="w-full text-sm">
-                    {copied ? '✓ Copied to Clipboard!' : 'Copy Full Invite'}
-                  </Button>
-                </div>
-                
-                {joined?.isOwner && (
-                  <div className="rounded-xl bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/20 p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                      <div className="text-sm font-semibold text-red-400">Owner Controls</div>
-                    </div>
-                    <Input
-                      value={deletePwd}
-                      onChange={(e) => setDeletePwd(e.target.value)}
-                      placeholder="Enter room password to confirm deletion"
-                      type="password"
-                      className="text-sm bg-slate-950/50"
-                    />
-                    <Button
-                      variant="danger"
-                      onClick={onDeleteRoom}
-                      disabled={!deletePwd.trim() || deleting}
-                      className="w-full text-sm"
-                    >
-                      {deleting ? 'Deleting Room...' : 'Delete Room Permanently'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Messages Area (scrollable) */}
-          <div
-            ref={listRef}
-            className="flex-1 overflow-y-auto overscroll-contain bg-slate-950 scrollbar-elegant"
-          >
-            <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 space-y-3">
+          {/* Messages Area */}
+          <div className="relative flex-1 overflow-hidden">
+            <div
+              ref={listRef}
+              className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-3 scrollbar-elegant"
+              style={{ paddingBottom: '120px' }}
+            >
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
                   <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4">
@@ -591,23 +589,23 @@ export default function AllianceChatWindow() {
             </div>
           </div>
 
-          {/* Fixed Typing Bar */}
-          <div className="flex-none bg-gradient-to-t from-slate-900 via-slate-900 to-slate-900/95 border-t border-white/10 shadow-2xl">
-            <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
-              <div className="flex items-end gap-2.5">
+          {/* Floating Typing Bar */}
+          <div className="absolute left-0 right-0 bottom-0 flex justify-center px-4 md:px-6 pb-4 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent pt-6 pointer-events-none">
+            <div className="pointer-events-auto w-full max-w-4xl">
+              <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl border border-white/10 shadow-2xl px-3 md:px-4 py-3">
                 {/* Voice Button */}
                 <button
                   type="button"
                   onClick={toggleRecord}
                   disabled={sending || transcribing}
-                  className={`flex-none h-12 w-12 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
+                  className={`flex-none h-11 w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
                     recording
-                      ? 'bg-red-500 text-white shadow-red-500/50 scale-110 ring-4 ring-red-500/20'
-                      : 'bg-gradient-to-br from-white/15 to-white/10 text-white/70 hover:text-white hover:from-white/20 hover:to-white/15 active:scale-95 border border-white/10'
+                      ? 'bg-red-500 text-white shadow-red-500/50 scale-110'
+                      : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/15 active:scale-95'
                   }`}
                   title={recording ? 'Stop recording' : 'Voice message'}
                 >
-                  <Mic size={20} className={recording ? 'animate-pulse' : ''} />
+                  <Mic size={18} className={recording ? 'animate-pulse' : ''} />
                 </button>
 
                 {/* Input Field */}
@@ -615,14 +613,14 @@ export default function AllianceChatWindow() {
                   <Input
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    placeholder={transcribing ? 'Transcribing voice...' : 'Type your message...'}
+                    placeholder={transcribing ? 'Transcribing...' : 'Type a message...'}
                     disabled={transcribing}
                     name="chat-message"
                     autoComplete="off"
                     autoCorrect="on"
                     autoCapitalize="sentences"
                     inputMode="text"
-                    className="w-full h-12 bg-gradient-to-br from-white/15 to-white/10 border border-white/10 focus:border-blue-500/50 focus:from-white/20 focus:to-white/15 focus:ring-2 focus:ring-blue-500/20 rounded-full px-5 py-3 pr-12 text-[15px] text-white placeholder:text-white/40 shadow-inner"
+                    className="border-none bg-transparent text-white placeholder:text-white/40 focus:ring-0 h-11"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
@@ -631,8 +629,8 @@ export default function AllianceChatWindow() {
                     }}
                   />
                   {transcribing && (
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                      <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
                     </div>
                   )}
                 </div>
@@ -641,16 +639,16 @@ export default function AllianceChatWindow() {
                 <button
                   onClick={sendMessage}
                   disabled={!messageText.trim() || sending}
-                  className={`flex-none h-12 w-12 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
+                  className={`flex-none h-11 w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
                     messageText.trim() && !sending
                       ? 'bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 text-white shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105 active:scale-95'
-                      : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
+                      : 'bg-white/5 text-white/30 cursor-not-allowed'
                   }`}
                 >
                   {sending ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <Send size={20} />
+                    <Send size={18} />
                   )}
                 </button>
               </div>
