@@ -5,6 +5,7 @@ type Language = { code: string; label: string }
 
 const LANGUAGES: Language[] = [
   { code: 'en', label: 'English' },
+  { code: 'ar', label: 'العربية (Arabic)' },
   { code: 'zh-CN', label: '中文 (Simplified Chinese)' },
   { code: 'zh-TW', label: '中文 (Traditional Chinese)' },
   { code: 'ja', label: '日本語 (Japanese)' },
@@ -12,6 +13,7 @@ const LANGUAGES: Language[] = [
   { code: 'es', label: 'Español' },
   { code: 'fr', label: 'Français' },
   { code: 'de', label: 'Deutsch' },
+  { code: 'it', label: 'Italiano' },
   { code: 'pt', label: 'Português' },
   { code: 'tr', label: 'Türkçe' },
   { code: 'vi', label: 'Tiếng Việt' },
@@ -20,6 +22,7 @@ const LANGUAGES: Language[] = [
   { code: 'id', label: 'Bahasa Indonesia' },
   { code: 'pl', label: 'Polski' },
   { code: 'uk', label: 'Українська' },
+  { code: 'ru', label: 'Русский (Russian)' },
   { code: 'hi', label: 'हिन्दी (Hindi)' },
   { code: 'nl', label: 'Nederlands' },
   { code: 'sv', label: 'Svenska' },
@@ -167,7 +170,7 @@ const COUNTRY_TO_LANG: Record<string, string[]> = {
   MN: ['mn'],
   ID: ['id'],
   MY: ['ms', 'en'],
-  SG: ['en', 'zh-CN', 'ms', 'ta'],
+  SG: ['ms', 'en', 'zh-CN', 'ta'],
   BN: ['ms'],
   TH: ['th'],
   LA: ['lo'],
@@ -228,20 +231,44 @@ export default function TranslateSwitcher() {
   }
 
   async function detectAndApply() {
-    try {
-      const resp = await fetch('https://ipapi.co/json/')
-      const geo = await resp.json()
-      const cc = String(geo?.country_code || '').toUpperCase()
-      if (cc && COUNTRY_TO_LANG[cc]?.length) {
-        const primary = COUNTRY_TO_LANG[cc][0]
-        const match = findLanguageCandidate(primary)
-        applyLanguage(match || DEFAULT_OPTION)
-      } else {
-        applyLanguage(DEFAULT_OPTION)
-      }
-    } catch {
-      applyLanguage(DEFAULT_OPTION)
+    const cacheKey = 'wos_geo_cc'
+    const tsKey = 'wos_geo_cc_ts'
+    const cached = localStorage.getItem(cacheKey)
+    const cachedTs = Number(localStorage.getItem(tsKey) || 0)
+    const ttlMs = 24 * 60 * 60 * 1000 // 24h
+    if (cached && cachedTs && Date.now() - cachedTs < ttlMs) {
+      const cc = cached.toUpperCase()
+      const primary = COUNTRY_TO_LANG[cc]?.[0]
+      const match = findLanguageCandidate(primary)
+      applyLanguage(match || DEFAULT_OPTION)
+      return
     }
+    async function getCC(): Promise<string | undefined> {
+      try {
+        const r1 = await fetch('https://ipapi.co/json/')
+        const j1 = await r1.json().catch(() => ({}))
+        if (j1?.country_code) return String(j1.country_code)
+      } catch { /* noop */ }
+      try {
+        const r2 = await fetch('https://ipwho.is/?fields=country_code')
+        const j2 = await r2.json().catch(() => ({}))
+        if (j2?.country_code) return String(j2.country_code)
+      } catch { /* noop */ }
+      return undefined
+    }
+    const code = await getCC()
+    const cc = String(code || '').toUpperCase()
+    if (cc) { localStorage.setItem(cacheKey, cc); localStorage.setItem(tsKey, String(Date.now())) }
+    if (cc && COUNTRY_TO_LANG[cc]?.length) {
+      const primary = COUNTRY_TO_LANG[cc][0]
+      const match = findLanguageCandidate(primary)
+      applyLanguage(match || DEFAULT_OPTION)
+      return
+    }
+    // Fallback: try browser language only if CC is missing/unmapped
+    const navLanguages: string[] = (navigator.languages as any) || (navigator.language ? [navigator.language] : [])
+    const navMatch = navLanguages.map((l) => findLanguageCandidate(l)).find(Boolean)
+    applyLanguage(navMatch || DEFAULT_OPTION)
   }
 
   useEffect(() => {
@@ -278,11 +305,13 @@ export default function TranslateSwitcher() {
 
   useEffect(() => {
     if (ready && autoEnabled) detectAndApply()
+    if (ready && !autoEnabled) restoreManual()
   }, [ready, autoEnabled])
 
   useEffect(() => {
     function onPageShow() {
       if (ready && autoEnabled) detectAndApply()
+      if (ready && !autoEnabled) restoreManual()
     }
     window.addEventListener('pageshow', onPageShow)
     return () => window.removeEventListener('pageshow', onPageShow)
@@ -296,7 +325,7 @@ export default function TranslateSwitcher() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  function applyLanguage(lang: Language) {
+  function applyLanguage(lang: Language, source: 'manual' | 'auto' = 'manual') {
     const select = document.querySelector<HTMLSelectElement>('#google_translate_element_container select')
     if (!select) {
       setCurrent(lang)
@@ -317,10 +346,19 @@ export default function TranslateSwitcher() {
     setCurrent(lang)
     setOpen(false)
     setQuery('')
+    if (source === 'manual') {
+      try { localStorage.setItem('wos_manual_lang', lang.code) } catch {}
+    }
     fadeTimeout = window.setTimeout(() => {
       document.documentElement.classList.remove('translate-fading')
       document.body.classList.remove('translate-fading')
     }, 650)
+  }
+
+  function restoreManual() {
+    const saved = localStorage.getItem('wos_manual_lang') || DEFAULT_OPTION.code
+    const lang = LANGUAGE_OPTIONS.find((l) => l.code === saved) || DEFAULT_OPTION
+    applyLanguage(lang, 'manual')
   }
 
   const filtered = useMemo(() => {
@@ -338,7 +376,7 @@ export default function TranslateSwitcher() {
           const next = !autoEnabled
           persistAuto(next)
           if (next && ready) detectAndApply()
-          if (!next && ready) applyLanguage(DEFAULT_OPTION)
+          if (!next && ready) restoreManual()
         }}
         className={`flex items-center gap-2 rounded-full border px-2.5 py-2 text-sm whitespace-nowrap transition ${autoEnabled ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'}`}
         aria-pressed={autoEnabled}
@@ -353,7 +391,7 @@ export default function TranslateSwitcher() {
         <button
           type="button"
           onClick={() => ready && setOpen((v) => !v)}
-          className={`flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 sm:px-4 py-2 text-sm text-white/70 transition hover:text-white hover:bg-white/10 ${!ready ? 'cursor-not-allowed opacity-60' : ''} max-w-[46vw] sm:max-w-none whitespace-nowrap overflow-hidden text-ellipsis`}
+          className={`flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 sm:px-4 py-2 text-sm text-white/70 transition hover:text-white hover:bg-white/10 ${!ready ? 'cursor-not-allowed opacity-60' : ''} max-w-[42vw] sm:max-w-none whitespace-nowrap overflow-hidden text-ellipsis`}
           aria-haspopup="listbox"
           aria-expanded={open}
         >
@@ -383,7 +421,7 @@ export default function TranslateSwitcher() {
                 <li key={lang.code}>
                   <button
                     type="button"
-                    onClick={() => applyLanguage(lang)}
+                    onClick={() => applyLanguage(lang, 'manual')}
                     className={`w-full text-left px-3 py-2 rounded-xl transition hover:bg-white/10 ${current.code === lang.code ? 'bg-primary/20 text-primary' : ''}`}
                     role="option"
                     aria-selected={current.code === lang.code}
