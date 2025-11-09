@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import Button from '../components/Button'
 import Input from '../components/Input'
-import axios from 'axios'
+import api from '../services/api'
 
 type Gift = { _id: string; code: string; expiresAt?: string; createdAt: string }
 
@@ -23,8 +23,7 @@ export default function QuickRedeem() {
 
   async function loadActiveCodes() {
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000'
-      const { data } = await axios.get<Gift[]>(`${apiUrl}/api/gift/active-codes`)
+      const { data } = await api.get<Gift[]>('/gift/active-codes')
       setActiveCodes(data)
     } catch (e) {
       console.error('Failed to load active codes:', e)
@@ -44,11 +43,7 @@ export default function QuickRedeem() {
     setStatus('⏳ Redeeming...')
 
     try {
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000'
-      const { data } = await axios.post(`${apiUrl}/api/gift/redeem/by-id`, {
-        gameId,
-        code
-      })
+      const { data } = await api.post('/gift/redeem/by-id', { gameId, code })
 
       if (data.ok) {
         setStatus(`✅ Success! Code "${code}" redeemed for Game ID: ${gameId}`)
