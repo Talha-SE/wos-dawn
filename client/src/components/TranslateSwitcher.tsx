@@ -314,6 +314,14 @@ export default function TranslateSwitcher() {
   }, [ready, autoEnabled])
 
   useEffect(() => {
+    function onPageShow() {
+      if (ready && autoEnabled) detectAndApply()
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [ready, autoEnabled])
+
+  useEffect(() => {
     function handleClick(event: MouseEvent) {
       if (!wrapperRef.current?.contains(event.target as Node)) setOpen(false)
     }
