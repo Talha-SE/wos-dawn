@@ -199,3 +199,9 @@ body.translate-fading {
   opacity: 0.82;
   filter: blur(0.5px);
 }
+
+/* Responsive type scale: reduce site-wide font size on small screens */
+html { font-size: 16px; }
+@media (max-width: 640px) { html { font-size: 14.5px; } }
+@media (max-width: 480px) { html { font-size: 14px; } }
+@media (max-width: 360px) { html { font-size: 13.5px; } }

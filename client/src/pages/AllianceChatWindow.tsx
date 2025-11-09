@@ -343,7 +343,11 @@ export default function AllianceChatWindow() {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-[2.6fr_1fr] gap-4 md:gap-5 flex-1 min-h-0">
             <div className="flex flex-col rounded-2xl border border-white/10 bg-white/5 flex-1 min-h-[320px] min-h-0">
-              <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
+              <div
+                ref={listRef}
+                className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3"
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}
+              >
                 {messages.map((msg) => {
                   const mine = msg.senderEmail === user?.email
                   const canDelete = !msg._id.startsWith('temp-') && (mine || joined?.isOwner)
@@ -382,7 +386,7 @@ export default function AllianceChatWindow() {
                 })}
                 <div ref={bottomRef} />
               </div>
-              <div className="border-t border-white/10 p-3">
+              <div className="sticky bottom-0 border-t border-white/10 p-3 bg-slate-900/70 backdrop-blur md:backdrop-blur-sm z-10">
                 <div className="flex items-center gap-3 pb-[env(safe-area-inset-bottom)] min-w-0">
                   <button
                     type="button"

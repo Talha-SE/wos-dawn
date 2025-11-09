@@ -41,8 +41,9 @@ export default function Dashboard() {
     left: 0,
     width: '100%'
   }
+  const headerPad = isMd ? 24 : 12
   const mainStyle: React.CSSProperties = {
-    paddingTop: headerHeight + 24
+    paddingTop: headerHeight + headerPad
   }
 
   useEffect(() => {
@@ -77,12 +78,12 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col">
       <header
-        className="fixed top-0 right-0 z-40 border-b border-white/10 bg-slate-900/95 backdrop-blur-xl transition-[left,width] duration-300 overflow-hidden"
+        className="fixed top-0 right-0 z-40 border-b border-white/10 bg-slate-900/95 backdrop-blur-xl transition-[left,width] duration-300"
         ref={headerRef}
         style={headerStyle}
       >
-        <div className="mx-auto max-w-7xl px-3 py-3 md:px-8 md:py-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2 md:gap-4 min-w-0 w-full md:w-auto">
+        <div className="mx-auto max-w-7xl px-3 py-2 sm:py-3 md:px-8 md:py-4 flex flex-wrap items-center gap-2 md:gap-3 justify-between">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0 w-full md:flex-1">
             <button
               type="button"
               className="md:hidden h-10 w-10 rounded-xl border border-white/10 bg-white/5 text-white grid place-items-center"
@@ -100,7 +101,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 text-sm text-white/70 w-full md:w-auto md:flex-nowrap flex-wrap justify-end">
+          <div className="flex items-center gap-1 sm:gap-2 text-sm text-white/70 w-full md:w-auto md:flex-nowrap flex-wrap justify-end">
             <TranslateSwitcher />
             {user?.email && <span className="hidden sm:inline">{user.email}</span>}
             <button onClick={onLogout} className="button-ghost h-10 px-3 md:px-4 notranslate" translate="no" aria-label="Logout">

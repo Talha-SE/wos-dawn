@@ -253,7 +253,11 @@ export default function ChatAi() {
 
   return (
     <div className="relative flex flex-col min-h-[calc(100vh-120px)] min-h-0 mt-2 md:mt-6">
-      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 md:px-8 pb-40 space-y-5">
+      <div
+        ref={listRef}
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 108px)' }}
+      >
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full text-white/45 text-sm">
             Start a conversation with your AI assistant
@@ -304,7 +308,10 @@ export default function ChatAi() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-[env(safe-area-inset-bottom)] pt-2 md:px-10">
+      <div
+        className="fixed left-0 right-0 z-40 px-3 pt-2 md:px-10"
+        style={{ bottom: '0', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}
+      >
         <div className="mx-auto max-w-4xl rounded-3xl md:rounded-full bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-xl px-3 md:px-4 py-2.5 md:py-3">
         {showTools && (
           <div className="mb-3 flex items-center gap-3 pb-3 border-b border-white/10">
