@@ -18,6 +18,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const fetchSeq = useRef(0)
 
   const loadRooms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    // bump sequence to ignore stale responses when multiple requests overlap
     const seq = ++fetchSeq.current
 
     if (!token) {
@@ -36,7 +37,6 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       setRoomsError(null)
     } catch {
       if (fetchSeq.current !== seq) return
-      if (!silent) setRooms([])
       setRoomsError('Unable to load rooms')
     } finally {
       if (fetchSeq.current !== seq) return
