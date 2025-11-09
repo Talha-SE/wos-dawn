@@ -256,7 +256,7 @@ export default function ChatAi() {
       <div
         ref={listRef}
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 108px)' }}
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 124px)' }}
       >
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full text-white/45 text-sm">
@@ -310,7 +310,7 @@ export default function ChatAi() {
 
       <div
         className="fixed left-0 right-0 z-40 px-3 pt-2 md:px-10"
-        style={{ bottom: '0', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
       >
         <div className="mx-auto max-w-4xl rounded-3xl md:rounded-full bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-xl px-3 md:px-4 py-2.5 md:py-3">
         {showTools && (

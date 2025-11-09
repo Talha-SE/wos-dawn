@@ -346,7 +346,7 @@ export default function AllianceChatWindow() {
               <div
                 ref={listRef}
                 className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3"
-                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }}
+                style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 112px)' }}
               >
                 {messages.map((msg) => {
                   const mine = msg.senderEmail === user?.email
@@ -386,8 +386,11 @@ export default function AllianceChatWindow() {
                 })}
                 <div ref={bottomRef} />
               </div>
-              <div className="sticky bottom-0 border-t border-white/10 p-3 bg-slate-900/70 backdrop-blur md:backdrop-blur-sm z-10">
-                <div className="flex items-center gap-3 pb-[env(safe-area-inset-bottom)] min-w-0">
+              <div
+                className="sticky border-t border-white/10 p-3 bg-slate-900/70 backdrop-blur md:backdrop-blur-sm z-10"
+                style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)' }}
+              >
+                <div className="flex items-center gap-3 min-w-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 10px)' }}>
                   <button
                     type="button"
                     onClick={toggleRecord}
