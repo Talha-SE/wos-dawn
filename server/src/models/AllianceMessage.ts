@@ -17,6 +17,7 @@ const AllianceMessageSchema = new Schema<AllianceMessageDoc>({
 })
 
 AllianceMessageSchema.index({ roomCode: 1, createdAt: -1 })
+AllianceMessageSchema.index({ createdAt: 1 }) // For efficient cleanup of old messages
 
 const AllianceMessage: Model<AllianceMessageDoc> = mongoose.models.AllianceMessage || mongoose.model<AllianceMessageDoc>('AllianceMessage', AllianceMessageSchema)
 export default AllianceMessage

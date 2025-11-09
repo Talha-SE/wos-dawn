@@ -125,8 +125,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20 px-3 py-4 ${collapsed ? 'flex flex-col items-center gap-2' : 'flex flex-col gap-0.5'}`}>
-          {!collapsed && <div className="px-3 py-2 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Main</div>}
+        <nav className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20 px-3 py-4 ${collapsed ? 'flex flex-col items-center gap-2' : 'flex flex-col gap-1'}`}>
+          {!collapsed && <div className="px-3 py-1.5 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Main</div>}
           <NavItem
             to="/dashboard/profile"
             active={pathname.includes('/profile')}
@@ -146,8 +146,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
               onNavigate={onMobileClose}
             />
           ) : (
-            <div className="flex flex-col gap-0.5">
-              <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Redeem</div>
+            <div className="flex flex-col gap-1 mt-4">
+              <div className="px-3 py-1.5 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Redeem</div>
               <button
                 className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${pathname.includes('/redeem') ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white border border-blue-500/20 shadow-lg shadow-blue-500/5' : 'text-white/80 hover:text-white hover:bg-white/5'} justify-between`}
                 onClick={() => setOpenRedeem((v) => !v)}
@@ -160,7 +160,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 <span className={`transition-transform duration-200 ${openRedeem ? 'rotate-180' : ''}`}><ChevronDown size={14} /></span>
               </button>
               {openRedeem && (
-                <div className="pl-6 flex flex-col gap-1 text-white">
+                <div className="pl-6 flex flex-col gap-0.5 mt-1 text-white">
                   <NavItem
                     to="/dashboard/redeem/private"
                     active={pathname.includes('/redeem/private')}
@@ -182,7 +182,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             </div>
           )}
 
-          {!collapsed && <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Utilities</div>}
+          {!collapsed && <div className="px-3 py-1.5 mt-4 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Utilities</div>}
           <NavItem
             to="/dashboard/svs"
             active={pathname.includes('/svs')}
@@ -219,8 +219,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
               />
             </>
           ) : (
-            <div className="flex flex-col gap-0.5">
-              <div className="px-3 py-2 mt-3 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Alliance</div>
+            <div className="flex flex-col gap-1 mt-4">
+              <div className="px-3 py-1.5 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Alliance</div>
               <NavItem
                 to="/dashboard/alliance-chat"
                 active={pathname === '/dashboard/alliance-chat'}
@@ -241,7 +241,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 <span className={`transition-transform duration-200 ${openJoined ? 'rotate-180' : ''}`}><ChevronDown size={14} /></span>
               </button>
               {openJoined && (
-                <div className="pl-6 flex flex-col gap-1 text-white">
+                <div className="pl-6 flex flex-col gap-0.5 mt-1 text-white">
                   {loadingRooms && rooms.length === 0 && (
                     <div className="px-3 py-2 text-sm text-white/60 animate-pulse">Loading rooms…</div>
                   )}

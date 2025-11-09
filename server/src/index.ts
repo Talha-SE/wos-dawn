@@ -12,6 +12,7 @@ import allianceRoutes from './routes/alliance';
 import slotsRoutes from './routes/slots';
 import { startAutoRedeemCron } from './cron/autoRedeem';
 import { startSlotResetCron } from './cron/resetSlots';
+import { startMessageCleanupCron } from './cron/cleanOldMessages';
 
 async function bootstrap() {
   await connectDB();
@@ -37,6 +38,7 @@ async function bootstrap() {
   if (env.ENABLE_CRON) {
     startAutoRedeemCron();
     startSlotResetCron();
+    startMessageCleanupCron();
   }
 
   return server;
