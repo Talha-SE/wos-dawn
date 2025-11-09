@@ -185,6 +185,15 @@ body {
   top: 0 !important;
 }
 
+/* Hide all Google Translate gadget footprints */
+#google_translate_element_container { display: none !important; }
+.goog-te-gadget { display: none !important; }
+.goog-te-gadget .goog-te-combo { display: none !important; }
+.goog-te-gadget-icon { display: none !important; }
+.goog-te-menu-frame { display: none !important; }
+.goog-te-balloon-frame { display: none !important; }
+.goog-logo-link { display: none !important; }
+
 html.translate-fading,
 body.translate-fading {
   opacity: 0.82;
