@@ -47,15 +47,6 @@ export default function Signup() {
         <div className="mt-4 text-sm text-white/60">
           Have an account? <Link className="text-accent" to="/login">Sign in</Link>
         </div>
-        <div className="mt-4 pt-4 border-t border-white/10 text-center">
-          <Link 
-            to="/quick-redeem" 
-            className="inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
-          >
-            <span>🎁</span>
-            Quick Redeem (No login required)
-          </Link>
-        </div>
       </div>
     </div>
   )
