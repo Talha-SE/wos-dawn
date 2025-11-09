@@ -7,7 +7,7 @@ type Ctx = {
   token: string | null
   user: User | null
   login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string) => Promise<void>
+  signup: (email: string, password: string, confirm: string) => Promise<void>
   logout: () => void
   refreshMe: () => Promise<void>
   setUser: (u: User | null) => void
@@ -40,8 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user)
   }
 
-  async function signup(email: string, password: string) {
-    const { data } = await api.post<{ token: string; user: User }>('/auth/signup', { email, password })
+  async function signup(email: string, password: string, confirm: string) {
+    const { data } = await api.post<{ token: string; user: User }>('/auth/signup', { email, password, passwordConfirmation: confirm })
     setToken(data.token)
     setUser(data.user)
   }

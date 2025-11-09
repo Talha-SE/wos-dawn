@@ -10,15 +10,20 @@ export default function Signup() {
   const { signup } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (password !== confirm) {
+      setError('Passwords do not match')
+      return
+    }
     setLoading(true)
     try {
-      await signup(email, password)
+      await signup(email, password, confirm)
       nav('/dashboard')
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Signup failed')
@@ -40,6 +45,10 @@ export default function Signup() {
           <div>
             <label className="text-sm text-white/70">Password</label>
             <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
+          <div>
+            <label className="text-sm text-white/70">Confirm Password</label>
+            <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
           </div>
           {error && <div className="text-sm text-red-400">{error}</div>}
           <Button type="submit" disabled={loading}>{loading ? 'Creating...' : 'Sign up'}</Button>

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Button from '../components/Button'
@@ -124,6 +124,8 @@ export default function ChatAi() {
   const chunksRef = useRef<Blob[]>([])
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+  const autoStickRef = useRef(true)
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false)
 
   const MarkdownCode = ({ inline, className, children, ...props }: any) => (
     inline ? (
@@ -133,16 +135,35 @@ export default function ChatAi() {
     )
   )
 
-  function scrollToBottom() {
-    if (!listRef.current) return
-    // Wait for layout to settle, then snap to bottom of the scroll container
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    const el = listRef.current
+    if (!el) return
     requestAnimationFrame(() => {
-      const el = listRef.current!
-      el.scrollTop = el.scrollHeight
+      el.scrollTo({ top: el.scrollHeight, behavior })
     })
-  }
+  }, [])
 
-  useLayoutEffect(() => { scrollToBottom() }, [messages.length, loading])
+  useLayoutEffect(() => {
+    if (autoStickRef.current) {
+      scrollToBottom(messages.length <= 1 ? 'auto' : 'smooth')
+    }
+  }, [messages.length, loading, scrollToBottom])
+
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+
+    const handleScroll = () => {
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight
+      const atBottom = distance <= 96
+      autoStickRef.current = atBottom
+      setShowJumpToLatest(!atBottom)
+    }
+
+    handleScroll()
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => el.removeEventListener('scroll', handleScroll)
+  }, [])
 
   async function send() {
     const content = text.trim()
@@ -150,6 +171,8 @@ export default function ChatAi() {
     const next: Msg = { role: 'user', content }
     setMessages((m) => [...m, next])
     setText('')
+    autoStickRef.current = true
+    setShowJumpToLatest(false)
     setLoading(true)
     try {
       const nextMessages = [...messages, next]
@@ -253,11 +276,12 @@ export default function ChatAi() {
 
   return (
     <div className="relative flex flex-col min-h-[calc(100vh-120px)] min-h-0 mt-2 md:mt-6">
-      <div
-        ref={listRef}
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 124px)' }}
-      >
+      <div className="relative flex-1 min-h-0 overflow-hidden">
+        <div
+          ref={listRef}
+          className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5 pb-36 md:pb-40 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px)' }}
+        >
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full text-white/45 text-sm">
             Start a conversation with your AI assistant
@@ -306,13 +330,27 @@ export default function ChatAi() {
             </div>
           </div>
         )}
+        </div>
+        {showJumpToLatest && (
+          <button
+            type="button"
+            onClick={() => {
+              autoStickRef.current = true
+              setShowJumpToLatest(false)
+              scrollToBottom()
+            }}
+            className="absolute bottom-28 right-6 md:right-12 flex items-center gap-2 rounded-full bg-primary/90 text-white px-4 py-2 text-xs shadow-lg"
+          >
+            Jump to latest
+          </button>
+        )}
       </div>
 
       <div
-        className="fixed left-0 right-0 z-40 px-3 pt-2 md:px-10"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 4px)', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+        className="flex-shrink-0 border-t border-white/10 bg-slate-900/90/ bg-slate-900/90 px-3 pt-3 md:px-10 md:pt-4"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
       >
-        <div className="mx-auto max-w-4xl rounded-3xl md:rounded-full bg-slate-900/90 backdrop-blur-xl border border-white/10 shadow-xl px-3 md:px-4 py-2.5 md:py-3">
+        <div className="mx-auto max-w-4xl rounded-3xl md:rounded-full bg-white/5 md:bg-slate-900/75 backdrop-blur-xl border border-white/10 shadow-xl px-3 md:px-4 py-3 md:py-3.5">
         {showTools && (
           <div className="mb-3 flex items-center gap-3 pb-3 border-b border-white/10">
             <label className="flex items-center gap-2 text-xs text-white/70">

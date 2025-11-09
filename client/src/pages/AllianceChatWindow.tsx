@@ -4,10 +4,60 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
-import { Mic, Send } from 'lucide-react'
+import { BookOpenCheck, ChevronLeft, ChevronRight, Mic, Send, X } from 'lucide-react'
 
 type Room = { code: string; name: string; state: number; isOwner?: boolean }
 type Message = { _id: string; roomCode: string; senderEmail: string; senderId: string; content: string; createdAt: string }
+
+type TutorialSlide = {
+  title: string
+  headline: string
+  bullets: string[]
+  accent?: string
+}
+
+const tutorialSlides: TutorialSlide[] = [
+  {
+    title: 'Search alliance rooms',
+    headline: 'Find active alliances in seconds',
+    bullets: [
+      'Use the global search bar to look up rooms by alliance name, code, or state number.',
+      'Results update as you type—tap a result to prefill the join form instantly.',
+      'No matches yet? Switch to Create to set up a fresh room for your squad.'
+    ],
+    accent: 'Discover'
+  },
+  {
+    title: 'Create your room',
+    headline: 'Launch a secure alliance hub',
+    bullets: [
+      'Enter a memorable alliance name and your state number to generate a unique room code.',
+      'Protect the room with a strong password—owners are auto-added when creation succeeds.',
+      'Share the generated code + password only with trusted teammates.'
+    ],
+    accent: 'Create'
+  },
+  {
+    title: 'Join an existing room',
+    headline: 'Jump into your alliance chat',
+    bullets: [
+      'Paste the invite code you received and enter the room password exactly.',
+      'Need a reminder? Owners can reshare details via the Share room access card.',
+      'Once authenticated, messages and streaming updates unlock instantly.'
+    ],
+    accent: 'Join'
+  },
+  {
+    title: 'Share + collaborate',
+    headline: 'Keep everyone aligned effortlessly',
+    bullets: [
+      'Use the Share room access card to copy an invite template with code, state, and link.',
+      'Owners can tidy conversations by deleting messages or closing rooms when needed.',
+      'Voice notes, instant messaging, and live updates keep alliances in sync 24/7.'
+    ],
+    accent: 'Engage'
+  }
+]
 
 export default function AllianceChatWindow() {
   const { user } = useAuth()
@@ -48,6 +98,8 @@ export default function AllianceChatWindow() {
   const chunksRef = useRef<Blob[]>([])
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialIndex, setTutorialIndex] = useState(0)
 
   function scrollToBottom() {
     if (!listRef.current) return
@@ -59,6 +111,34 @@ export default function AllianceChatWindow() {
       })
     })
   }
+
+  useEffect(() => {
+    if (!showTutorial) return
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setShowTutorial(false)
+        setTutorialIndex(0)
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        setTutorialIndex((idx) => Math.min(idx + 1, tutorialSlides.length - 1))
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        setTutorialIndex((idx) => Math.max(idx - 1, 0))
+      }
+    }
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKey)
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      document.body.style.overflow = originalOverflow
+    }
+  }, [showTutorial])
+
+  const currentTutorial = tutorialSlides[tutorialIndex]
 
   async function toggleRecord() {
     if (recording) {
@@ -327,8 +407,41 @@ export default function AllianceChatWindow() {
     }
   }, [routeCode])
 
+  function openTutorial() {
+    setTutorialIndex(0)
+    setShowTutorial(true)
+  }
+
+  function closeTutorial() {
+    setShowTutorial(false)
+    setTutorialIndex(0)
+  }
+
+  function goNextTutorial() {
+    if (tutorialIndex < tutorialSlides.length - 1) {
+      setTutorialIndex((idx) => idx + 1)
+    } else {
+      closeTutorial()
+    }
+  }
+
+  function goPrevTutorial() {
+    setTutorialIndex((idx) => Math.max(idx - 1, 0))
+  }
+
   return (
     <div className="flex flex-col gap-4 min-h-[calc(100vh-140px)] md:min-h-[calc(100vh-160px)]">
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="subtle"
+          onClick={openTutorial}
+          className="inline-flex items-center gap-2 px-3 py-2 text-xs md:text-sm"
+        >
+          <BookOpenCheck size={16} className="hidden md:inline" />
+          Tutorial
+        </Button>
+      </div>
       {joined?.code ? (
         <section className="glass flex flex-col flex-1 border border-white/10 rounded-2xl px-3 md:px-6 py-3 md:py-6 shadow-lg min-h-0">
           {/* Mobile room header */}
@@ -571,5 +684,72 @@ export default function AllianceChatWindow() {
           )}
         </>
       )}
+      {showTutorial && currentTutorial && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 md:px-6">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={closeTutorial} />
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-white/12 bg-gradient-to-b from-slate-900/95 via-slate-900/90 to-slate-950/95 shadow-2xl">
+            <div className="flex items-center justify-between px-6 md:px-8 pt-6">
+              <div className="text-xs uppercase tracking-[0.3em] text-primary/70">Alliance Chat</div>
+              <button
+                type="button"
+                onClick={closeTutorial}
+                className="rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 transition p-1.5"
+                aria-label="Close tutorial"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 md:px-8 pt-4 pb-2">
+              <div className="flex items-center gap-3 text-xs text-white/40">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-white/70">
+                  Step {tutorialIndex + 1} of {tutorialSlides.length}
+                </span>
+                <span className="uppercase tracking-wide text-primary/80">{currentTutorial.accent}</span>
+              </div>
+              <h2 className="mt-4 text-2xl md:text-3xl font-semibold text-white tracking-tight">{currentTutorial.headline}</h2>
+              <p className="mt-2 text-sm md:text-base text-white/70 max-w-2xl">{currentTutorial.title}</p>
+              <ul className="mt-6 space-y-3 text-sm md:text-[15px] text-white/80">
+                {currentTutorial.bullets.map((bullet, idx) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <span className="mt-1 h-2 w-2 rounded-full bg-primary/70 shadow-[0_0_8px_rgba(59,130,246,0.35)]" />
+                    <span className="leading-relaxed">{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="px-6 md:px-8 pb-6 pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t border-white/10">
+              <div className="flex items-center gap-2 justify-center md:justify-start">
+                {tutorialSlides.map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={`h-1.5 w-10 rounded-full transition-all ${idx === tutorialIndex ? 'bg-primary shadow-[0_0_16px_rgba(59,130,246,0.6)]' : 'bg-white/15'}`}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={goPrevTutorial}
+                  disabled={tutorialIndex === 0}
+                  className="inline-flex items-center gap-2 text-sm"
+                >
+                  <ChevronLeft size={16} />
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={goNextTutorial}
+                  className="inline-flex items-center gap-2 text-sm"
+                >
+                  {tutorialIndex === tutorialSlides.length - 1 ? 'Done' : 'Next'}
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )}
+  )
+}
