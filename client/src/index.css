@@ -200,8 +200,11 @@ body.translate-fading {
   filter: blur(0.5px);
 }
 
-/* Responsive type scale: reduce site-wide font size on small screens */
-html { font-size: 16px; }
-@media (max-width: 640px) { html { font-size: 14.5px; } }
-@media (max-width: 480px) { html { font-size: 14px; } }
-@media (max-width: 360px) { html { font-size: 13.5px; } }
+/* Responsive type scale: reduce site-wide font size on all screen sizes */
+html { font-size: 15px; }
+@media (max-width: 1280px) { html { font-size: 14.6px; } }
+@media (max-width: 1024px) { html { font-size: 14.3px; } }
+@media (max-width: 768px) { html { font-size: 14px; } }
+@media (max-width: 640px) { html { font-size: 13.8px; } }
+@media (max-width: 480px) { html { font-size: 13.6px; } }
+@media (max-width: 360px) { html { font-size: 13.3px; } }
