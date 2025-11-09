@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, KeyboardEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Button from '../components/Button'
+import Input from '../components/Input'
 import api from '../services/api'
 import { Settings, Mic, Send } from 'lucide-react'
 
@@ -222,7 +223,7 @@ export default function ChatAi() {
     }
   }
 
-  function onKey(e: React.KeyboardEvent<HTMLInputElement>) {
+  function onKey(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' && !e.shiftKey) send()
   }
 
@@ -282,54 +283,54 @@ export default function ChatAi() {
           className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5 pb-36 md:pb-40 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px)' }}
         >
-        {messages.length === 0 && (
-          <div className="flex items-center justify-center h-full text-white/45 text-sm">
-            Start a conversation with your AI assistant
-          </div>
-        )}
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[82%] md:max-w-[60%] rounded-3xl px-4 py-3 md:px-5 md:py-3 shadow-sm space-y-3 ${m.role === 'user' ? 'bg-gradient-to-b from-primary/40 to-primary/25 text-white border border-primary/30' : 'bg-white/10 text-white/90 border border-white/15'}`}>
-              {m.content && (
-                m.role === 'assistant' ? (
-                  <div className="markdown-body text-sm leading-relaxed break-words [&_pre]:bg-black/30 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-xl [&_pre]:p-3 [&_code]:text-[13px] [&_code]:font-mono [&_h1]:text-lg [&_h2]:text-base [&_h1,h2]:font-semibold [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-5 [&_table]:w-full [&_th,td]:border [&_th,td]:border-white/10 [&_th,td]:p-2">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-accent underline" />,
-                        code: MarkdownCode
-                      }}
-                    >
-                      {m.content}
-                    </ReactMarkdown>
+          {messages.length === 0 && (
+            <div className="flex items-center justify-center h-full text-white/45 text-sm">
+              Start a conversation with your AI assistant
+            </div>
+          )}
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[82%] md:max-w-[60%] rounded-3xl px-4 py-3 md:px-5 md:py-3 shadow-sm space-y-3 ${m.role === 'user' ? 'bg-gradient-to-b from-primary/40 to-primary/25 text-white border border-primary/30' : 'bg-white/10 text-white/90 border border-white/15'}`}>
+                {m.content && (
+                  m.role === 'assistant' ? (
+                    <div className="markdown-body text-sm leading-relaxed break-words [&_pre]:bg-black/30 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-xl [&_pre]:p-3 [&_code]:text-[13px] [&_code]:font-mono [&_h1]:text-lg [&_h2]:text-base [&_h1,h2]:font-semibold [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-5 [&_table]:w-full [&_th,td]:border [&_th,td]:border-white/10 [&_th,td]:p-2">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-accent underline" />,
+                          code: MarkdownCode
+                        }}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.content}</div>
+                  )
+                )}
+                {m.imageUrls && m.imageUrls.length > 0 && (
+                  <div className={`grid gap-2 ${m.imageUrls.length > 1 ? 'grid-cols-2' : ''}`}>
+                    {m.imageUrls.map((url, idx) => (
+                      <img
+                        key={idx}
+                        src={url}
+                        alt="Generated"
+                        className="w-full rounded-2xl border border-white/10 object-cover"
+                        loading="lazy"
+                      />
+                    ))}
                   </div>
-                ) : (
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.content}</div>
-                )
-              )}
-              {m.imageUrls && m.imageUrls.length > 0 && (
-                <div className={`grid gap-2 ${m.imageUrls.length > 1 ? 'grid-cols-2' : ''}`}>
-                  {m.imageUrls.map((url, idx) => (
-                    <img
-                      key={idx}
-                      src={url}
-                      alt="Generated"
-                      className="w-full rounded-2xl border border-white/10 object-cover"
-                      loading="lazy"
-                    />
-                  ))}
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="max-w-[60%] rounded-3xl px-4 py-3 bg-white/10 text-white/70 text-sm">
-              Thinking…
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="max-w-[60%] rounded-3xl px-4 py-3 bg-white/10 text-white/70 text-sm">
+                Thinking…
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </div>
         {showJumpToLatest && (
           <button
@@ -346,62 +347,57 @@ export default function ChatAi() {
         )}
       </div>
 
-      <div
-        className="flex-shrink-0 border-t border-white/10 bg-slate-900/90/ bg-slate-900/90 px-3 pt-3 md:px-10 md:pt-4"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
-      >
-        <div className="mx-auto max-w-4xl rounded-3xl md:rounded-full bg-white/5 md:bg-slate-900/75 backdrop-blur-xl border border-white/10 shadow-xl px-3 md:px-4 py-3 md:py-3.5">
-        {showTools && (
-          <div className="mb-3 flex items-center gap-3 pb-3 border-b border-white/10">
-            <label className="flex items-center gap-2 text-xs text-white/70">
-              <span className="relative inline-flex h-5 w-9 items-center rounded-full bg-white/10 transition">
-                <input type="checkbox" className="peer absolute inset-0 opacity-0 cursor-pointer" checked={tools.web_search} onChange={(e) => setTools((t) => ({ ...t, web_search: e.target.checked }))} />
-                <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-4 peer-checked:bg-primary" />
-              </span>
-              Web search
-            </label>
-            <label className="flex items-center gap-2 text-xs text-white/70">
-              <span className="relative inline-flex h-5 w-9 items-center rounded-full bg-white/10 transition">
-                <input type="checkbox" className="peer absolute inset-0 opacity-0 cursor-pointer" checked={tools.image_generation} onChange={(e) => setTools((t) => ({ ...t, image_generation: e.target.checked }))} />
-                <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-4 peer-checked:bg-primary" />
-              </span>
-              Image generation
-            </label>
+      <div className="pointer-events-none fixed left-0 right-0 bottom-6 md:bottom-8 flex justify-center px-4 md:px-6">
+        <div className="pointer-events-auto w-full max-w-4xl">
+          {showTools && (
+            <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-xl px-4 py-3">
+              <label className="flex items-center gap-2 text-xs text-white/70">
+                <span className="relative inline-flex h-5 w-9 items-center rounded-full bg-white/10 transition">
+                  <input type="checkbox" className="peer absolute inset-0 opacity-0 cursor-pointer" checked={tools.web_search} onChange={(e) => setTools((t) => ({ ...t, web_search: e.target.checked }))} />
+                  <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-4 peer-checked:bg-primary" />
+                </span>
+                Web search
+              </label>
+              <label className="flex items-center gap-2 text-xs text-white/70">
+                <span className="relative inline-flex h-5 w-9 items-center rounded-full bg-white/10 transition">
+                  <input type="checkbox" className="peer absolute inset-0 opacity-0 cursor-pointer" checked={tools.image_generation} onChange={(e) => setTools((t) => ({ ...t, image_generation: e.target.checked }))} />
+                  <span className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-4 peer-checked:bg-primary" />
+                </span>
+                Image generation
+              </label>
+            </div>
+          )}
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-slate-900/85 backdrop-blur-2xl border border-white/10 shadow-2xl px-3 md:px-4 py-2.5 md:py-3">
+            <button
+              type="button"
+              onClick={toggleRecord}
+              disabled={loading || transcribing}
+              className={`h-10 w-10 md:h-11 md:w-11 rounded-full border transition grid place-items-center ${recording ? 'bg-primary text-white border-primary/50 animate-pulse' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
+              title={recording ? 'Stop recording' : 'Voice typing'}
+            >
+              <Mic size={18} />
+            </button>
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Ask anything"
+              name="chat-message"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              inputMode="text"
+              className="flex-1 min-w-0 border-none bg-transparent text-white"
+              onKeyDown={onKey}
+            />
+            <Button onClick={send} disabled={!text.trim() || loading} className="px-4 md:px-5 flex-shrink-0 h-10 md:h-11 rounded-full">
+              {loading ? 'Sending…' : (
+                <>
+                  <span className="md:hidden grid place-items-center"><Send size={16} /></span>
+                  <span className="hidden md:inline">Send</span>
+                </>
+              )}
+            </Button>
           </div>
-        )}
-        <div className="flex items-center gap-2 md:gap-3 min-w-0">
-          <button
-            onClick={() => setShowTools((v) => !v)}
-            className={`h-11 w-11 rounded-2xl border transition grid place-items-center md:h-11 md:w-11 ${showTools ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
-            title="Toggle tools"
-          >
-            <Settings size={18} />
-          </button>
-          <button
-            onClick={toggleRecord}
-            disabled={loading || transcribing}
-            className={`h-11 w-11 rounded-2xl border transition grid place-items-center ${recording ? 'bg-primary text-white border-primary/50 animate-pulse' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
-            title={recording ? 'Stop recording' : 'Voice typing'}
-          >
-            <Mic size={18} />
-          </button>
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onKey}
-            placeholder="Ask anything"
-            className="flex-1 min-w-0 h-11 px-4 bg-white/5 border border-white/10 rounded-2xl md:rounded-full text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
-          />
-          <Button onClick={send} disabled={!text.trim() || loading} className="h-11 rounded-2xl md:rounded-full px-3 md:px-6 flex-shrink-0">
-            {loading ? 'Sending…' : (
-              <>
-                <span className="md:hidden grid place-items-center"><Send size={16} /></span>
-                <span className="hidden md:inline">Send</span>
-              </>
-            )}
-          </Button>
-        </div>
         </div>
       </div>
     </div>

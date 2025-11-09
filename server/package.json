@@ -17,8 +17,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.6.1",
     "node-cron": "^3.0.3",
-    "tlds": "^1.252.0",
-    "validator": "^13.12.0"
+    "tlds": "^1.261.0",
+    "validator": "^13.15.22"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",

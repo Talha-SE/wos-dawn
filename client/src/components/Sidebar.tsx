@@ -9,7 +9,7 @@ type JoinedRoom = { code: string; name: string; state: number }
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }) {
   const { pathname } = useLocation()
-  const { token } = useAuth()
+  const { token, refreshMe } = useAuth()
   const [openRedeem, setOpenRedeem] = useState(true)
   const [openJoined, setOpenJoined] = useState(true)
   const [rooms, setRooms] = useState<JoinedRoom[]>([])
@@ -35,14 +35,30 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       if (fetchSeq.current !== seq) return
       setRooms(data || [])
       setRoomsError(null)
-    } catch {
+    } catch (err: any) {
       if (fetchSeq.current !== seq) return
+      const status = err?.response?.status
+      if (status && (status === 401 || status === 403)) {
+        try {
+          await refreshMe()
+          const retry = await api.get<JoinedRoom[]>('/alliance/my-rooms')
+          if (fetchSeq.current !== seq) return
+          setRooms(retry.data || [])
+          setRoomsError(null)
+          return
+        } catch (retryErr: any) {
+          if (fetchSeq.current !== seq) return
+          const retryStatus = retryErr?.response?.status
+          if (retryStatus === 401) {
+            setRooms([])
+          }
+        }
+      }
       setRoomsError('Unable to load rooms')
     } finally {
-      if (fetchSeq.current !== seq) return
-      if (!silent) setLoadingRooms(false)
+      if (fetchSeq.current === seq && !silent) setLoadingRooms(false)
     }
-  }, [token])
+  }, [token, refreshMe])
 
   useEffect(() => {
     if (!token) {
@@ -57,6 +73,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     window.addEventListener('focus', onFocus)
     return () => { window.removeEventListener('focus', onFocus) }
   }, [token, loadRooms])
+
+  useEffect(() => {
+    const onRoomsRefresh = () => loadRooms({ silent: true })
+    window.addEventListener('alliance:rooms-refresh', onRoomsRefresh)
+    return () => window.removeEventListener('alliance:rooms-refresh', onRoomsRefresh)
+  }, [loadRooms])
 
   return (
     <aside className={`fixed left-0 top-0 bottom-0 z-40 md:z-20 bg-slate-900/95 border-r border-white/10 transition-all duration-300 w-64 ${collapsed ? 'md:w-20' : 'md:w-64'} transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>

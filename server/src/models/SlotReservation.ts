@@ -23,5 +23,6 @@ const SlotReservationSchema = new Schema<ISlotReservation>({
 }, { timestamps: true })
 
 SlotReservationSchema.index({ state: 1, date: 1, slotIndex: 1 }, { unique: true })
+SlotReservationSchema.index({ state: 1, date: 1, reservedBy: 1 }, { unique: true })
 
 export default mongoose.model<ISlotReservation>('SlotReservation', SlotReservationSchema)
