@@ -4,7 +4,7 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
-import { Mic } from 'lucide-react'
+import { Mic, Send } from 'lucide-react'
 
 type Room = { code: string; name: string; state: number; isOwner?: boolean }
 type Message = { _id: string; roomCode: string; senderEmail: string; senderId: string; content: string; createdAt: string }
@@ -383,7 +383,7 @@ export default function AllianceChatWindow() {
                 <div ref={bottomRef} />
               </div>
               <div className="border-t border-white/10 p-3">
-                <div className="flex items-center gap-3 pb-[env(safe-area-inset-bottom)]">
+                <div className="flex items-center gap-3 pb-[env(safe-area-inset-bottom)] min-w-0">
                   <button
                     type="button"
                     onClick={toggleRecord}
@@ -402,6 +402,7 @@ export default function AllianceChatWindow() {
                     autoCorrect="off"
                     autoCapitalize="off"
                     inputMode="text"
+                    className="flex-1 min-w-0"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
@@ -409,7 +410,14 @@ export default function AllianceChatWindow() {
                       }
                     }}
                   />
-                  <Button onClick={sendMessage} disabled={!messageText.trim() || sending}>Send</Button>
+                  <Button onClick={sendMessage} disabled={!messageText.trim() || sending} className="px-3 md:px-5 flex-shrink-0 h-11">
+                    {sending ? 'Sending…' : (
+                      <>
+                        <span className="md:hidden grid place-items-center"><Send size={16} /></span>
+                        <span className="hidden md:inline">Send</span>
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>

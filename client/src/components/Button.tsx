@@ -24,9 +24,9 @@ const sizeClass = {
 
 export default function Button(props: ButtonProps) {
   const { className = '', variant = 'primary', size = 'md', loading = false, children, disabled, ...rest } = props
-  const classes = `${variantClass[variant]} ${sizeClass[size]} rounded px-4 py-2 font-medium transition-colors ${className}`.trim()
+  const classes = `${variantClass[variant]} ${sizeClass[size]} rounded px-4 py-2 font-medium transition-colors notranslate whitespace-nowrap overflow-hidden text-ellipsis ${className}`.trim()
   return (
-    <button className={classes} disabled={disabled || loading} {...rest}>
+    <button className={classes} translate="no" disabled={disabled || loading} {...rest}>
       {loading ? 'Please wait…' : children}
     </button>
   )

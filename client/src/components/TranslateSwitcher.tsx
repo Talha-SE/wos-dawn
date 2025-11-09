@@ -340,24 +340,26 @@ export default function TranslateSwitcher() {
           if (next && ready) detectAndApply()
           if (!next && ready) applyLanguage(DEFAULT_OPTION)
         }}
-        className={`flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${autoEnabled ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'}`}
+        className={`flex items-center gap-2 rounded-full border px-2.5 py-2 text-sm whitespace-nowrap transition ${autoEnabled ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'}`}
         aria-pressed={autoEnabled}
         title="Auto-detect language by IP"
       >
         <Check size={14} className={`${autoEnabled ? 'text-emerald-300 opacity-100' : 'opacity-50'}`} />
-        <span className={autoEnabled ? 'text-emerald-300 font-medium' : ''}>Auto Translate</span>
+        <span className={`hidden sm:inline ${autoEnabled ? 'text-emerald-300 font-medium' : ''}`}>Auto Translate</span>
+        <span className={`sm:hidden ${autoEnabled ? 'text-emerald-300 font-medium' : ''}`}>Auto</span>
       </button>
       <div ref={menuRef} className="relative">
         <div id="google_translate_element_container" className="hidden" />
         <button
           type="button"
           onClick={() => ready && setOpen((v) => !v)}
-          className={`flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 transition hover:text-white hover:bg-white/10 ${!ready ? 'cursor-not-allowed opacity-60' : ''}`}
+          className={`flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 sm:px-4 py-2 text-sm text-white/70 transition hover:text-white hover:bg-white/10 ${!ready ? 'cursor-not-allowed opacity-60' : ''} max-w-[46vw] sm:max-w-none whitespace-nowrap overflow-hidden text-ellipsis`}
           aria-haspopup="listbox"
           aria-expanded={open}
         >
           <Globe size={16} />
-          <span>{current.label}</span>
+          <span className="hidden sm:inline">{current.label}</span>
+          <span className="sm:hidden uppercase">{current.code}</span>
           <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
 

@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Button from '../components/Button'
 import api from '../services/api'
-import { Settings, Mic } from 'lucide-react'
+import { Settings, Mic, Send } from 'lucide-react'
 
 type Msg = { role: 'user' | 'assistant' | 'system'; content: string; imageUrls?: string[] }
 
@@ -324,7 +324,7 @@ export default function ChatAi() {
             </label>
           </div>
         )}
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <button
             onClick={() => setShowTools((v) => !v)}
             className={`h-11 w-11 rounded-2xl border transition grid place-items-center md:h-11 md:w-11 ${showTools ? 'bg-primary/20 border-primary/40 text-primary' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
@@ -346,9 +346,16 @@ export default function ChatAi() {
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onKey}
             placeholder="Ask anything"
-            className="flex-1 h-11 px-4 bg-white/5 border border-white/10 rounded-2xl md:rounded-full text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
+            className="flex-1 min-w-0 h-11 px-4 bg-white/5 border border-white/10 rounded-2xl md:rounded-full text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent transition-all"
           />
-          <Button onClick={send} disabled={!text.trim() || loading} className="h-11 rounded-2xl md:rounded-full px-5 md:px-6">{loading ? 'Sending…' : 'Send'}</Button>
+          <Button onClick={send} disabled={!text.trim() || loading} className="h-11 rounded-2xl md:rounded-full px-3 md:px-6 flex-shrink-0">
+            {loading ? 'Sending…' : (
+              <>
+                <span className="md:hidden grid place-items-center"><Send size={16} /></span>
+                <span className="hidden md:inline">Send</span>
+              </>
+            )}
+          </Button>
         </div>
         </div>
       </div>

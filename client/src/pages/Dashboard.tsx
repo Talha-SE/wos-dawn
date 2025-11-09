@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../state/AuthContext'
 import TranslateSwitcher from '../components/TranslateSwitcher'
 import logo from '../assets/wos-dawn.png'
-import { Menu } from 'lucide-react'
+import { Menu, LogOut } from 'lucide-react'
 
 //
 
@@ -82,7 +82,7 @@ export default function Dashboard() {
         style={headerStyle}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-3 md:px-8 md:py-4">
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
             <button
               type="button"
               className="md:hidden h-10 w-10 rounded-xl border border-white/10 bg-white/5 text-white grid place-items-center"
@@ -91,19 +91,22 @@ export default function Dashboard() {
             >
               <Menu size={18} />
             </button>
-            <img src={logo} alt="WOS Dawn" className="h-12 w-12 rounded-2xl object-cover shadow-xl" />
-            <div>
-              <div className="text-xs uppercase tracking-widest text-white/40">WOS Dawn</div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-lg md:text-2xl text-white tracking-tight">{title}</h1>
+            <img src={logo} alt="WOS Dawn" className="h-10 w-10 md:h-12 md:w-12 rounded-2xl object-cover shadow-xl" />
+            <div className="min-w-0">
+              <div className="text-[10px] md:text-xs uppercase tracking-widest text-white/40">WOS Dawn</div>
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="font-display text-base md:text-2xl text-white tracking-tight whitespace-nowrap truncate max-w-[48vw] md:max-w-none">{title}</h1>
                 <span className="hidden md:inline-block rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-white/40">Command Center</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 text-sm text-white/70">
+          <div className="flex items-center gap-2 sm:gap-3 text-sm text-white/70 flex-shrink-0">
             <TranslateSwitcher />
             {user?.email && <span className="hidden sm:inline">{user.email}</span>}
-            <button onClick={onLogout} className="button-ghost h-10 px-4">Logout</button>
+            <button onClick={onLogout} className="button-ghost h-10 px-3 md:px-4 notranslate" translate="no" aria-label="Logout">
+              <span className="md:hidden grid place-items-center"><LogOut size={16} /></span>
+              <span className="hidden md:inline">Logout</span>
+            </button>
           </div>
         </div>
       </header>
