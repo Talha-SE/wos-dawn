@@ -224,6 +224,15 @@ export default function TranslateSwitcher() {
     localStorage.setItem('wos_auto_translate', v ? '1' : '0')
   }
 
+  function clearGoogTransCookies() {
+    try {
+      document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
+      const host = window.location.hostname
+      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${host}`
+      document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${host}`
+    } catch {}
+  }
+
   function findLanguageCandidate(code?: string): Language | undefined {
     if (!code) return undefined
     const normalized = code.toLowerCase()
@@ -357,6 +366,18 @@ export default function TranslateSwitcher() {
 
   function restoreManual() {
     const saved = localStorage.getItem('wos_manual_lang') || DEFAULT_OPTION.code
+    if (saved === DEFAULT_OPTION.code) {
+      clearGoogTransCookies()
+      setCurrent(DEFAULT_OPTION)
+      setOpen(false)
+      setQuery('')
+      const select = document.querySelector<HTMLSelectElement>('#google_translate_element_container select')
+      if (select) {
+        select.selectedIndex = 0
+        select.dispatchEvent(new Event('change'))
+      }
+      return
+    }
     const lang = LANGUAGE_OPTIONS.find((l) => l.code === saved) || DEFAULT_OPTION
     applyLanguage(lang, 'manual')
   }
@@ -421,7 +442,22 @@ export default function TranslateSwitcher() {
                 <li key={lang.code}>
                   <button
                     type="button"
-                    onClick={() => { applyLanguage(lang, 'manual'); if (lang.code === DEFAULT_OPTION.code) { try { document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; } catch {} window.location.reload(); } }}
+                    onClick={() => {
+                      if (lang.code === DEFAULT_OPTION.code) {
+                        try {
+                          persistAuto(false)
+                          localStorage.setItem('wos_manual_lang', DEFAULT_OPTION.code)
+                          // Clear Google Translate cookie variants
+                          document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
+                          const host = window.location.hostname
+                          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${host}`
+                          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${host}`
+                        } catch {}
+                        window.location.reload()
+                      } else {
+                        applyLanguage(lang, 'manual')
+                      }
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-xl transition hover:bg-white/10 ${current.code === lang.code ? 'bg-primary/20 text-primary' : ''}`}
                     role="option"
                     aria-selected={current.code === lang.code}
