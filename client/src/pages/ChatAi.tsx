@@ -127,6 +127,8 @@ export default function ChatAi() {
   const [transcribing, setTranscribing] = useState(false)
   const autoStickRef = useRef(true)
   const [showJumpToLatest, setShowJumpToLatest] = useState(false)
+  const composerRef = useRef<HTMLDivElement | null>(null)
+  const [composerHeight, setComposerHeight] = useState(0)
 
   const MarkdownCode = ({ inline, className, children, ...props }: any) => (
     inline ? (
@@ -165,6 +167,24 @@ export default function ChatAi() {
     el.addEventListener('scroll', handleScroll, { passive: true })
     return () => el.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useLayoutEffect(() => {
+    const el = composerRef.current
+    if (!el) return
+    const update = () => setComposerHeight(el.offsetHeight)
+    update()
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => update())
+      ro.observe(el)
+    } else {
+      const id = window.setInterval(update, 250)
+      return () => window.clearInterval(id)
+    }
+    return () => {
+      if (ro) ro.disconnect()
+    }
+  }, [showTools])
 
   async function send() {
     const content = text.trim()
@@ -276,12 +296,12 @@ export default function ChatAi() {
   }
 
   return (
-    <div className="relative flex flex-col min-h-[calc(100vh-120px)] min-h-0 mt-2 md:mt-6">
+    <div className="relative flex flex-col min-h-[calc(100vh-120px)] min-h-0 mt-2 md:mt-6 overflow-hidden">
       <div className="relative flex-1 min-h-0 overflow-hidden">
         <div
           ref={listRef}
-          className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5 pb-36 md:pb-40 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 140px)' }}
+          className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+          style={{ paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + ${composerHeight}px)` }}
         >
           {messages.length === 0 && (
             <div className="flex items-center justify-center h-full text-white/45 text-sm">
@@ -347,7 +367,7 @@ export default function ChatAi() {
         )}
       </div>
 
-      <div className="pointer-events-none fixed left-0 right-0 bottom-6 md:bottom-8 flex justify-center px-4 md:px-6">
+      <div ref={composerRef} className="pointer-events-none fixed left-0 right-0 bottom-0 flex justify-center px-4 md:px-6">
         <div className="pointer-events-auto w-full max-w-4xl">
           {showTools && (
             <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-900/80 backdrop-blur-xl px-4 py-3">
@@ -368,6 +388,16 @@ export default function ChatAi() {
             </div>
           )}
           <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-slate-900/85 backdrop-blur-2xl border border-white/10 shadow-2xl px-3 md:px-4 py-2.5 md:py-3">
+            <button
+              type="button"
+              onClick={() => setShowTools((v) => !v)}
+              disabled={loading}
+              className={`h-10 w-10 md:h-11 md:w-11 rounded-full border transition grid place-items-center ${showTools ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10'}`}
+              title="Tools"
+              aria-pressed={showTools}
+            >
+              <Settings size={18} />
+            </button>
             <button
               type="button"
               onClick={toggleRecord}

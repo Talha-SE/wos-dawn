@@ -100,6 +100,7 @@ export default function AllianceChatWindow() {
   const [transcribing, setTranscribing] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialIndex, setTutorialIndex] = useState(0)
+  const notificationSoundRef = useRef<HTMLAudioElement | null>(null)
 
   function scrollToBottom() {
     if (!listRef.current) return
@@ -317,6 +318,10 @@ export default function AllianceChatWindow() {
           const filtered = prev.filter((m) => !(m._id.startsWith('temp-') && m.content === payload.content && m.senderEmail === payload.senderEmail))
           return [...filtered, payload]
         })
+        if (notificationSoundRef.current && payload.senderEmail !== user?.email) {
+          notificationSoundRef.current.currentTime = 0
+          notificationSoundRef.current.play().catch(() => undefined)
+        }
         scrollToBottom()
       } else if (data?.type === 'message_deleted' && data.payload?._id) {
         const id = data.payload._id as string
@@ -431,6 +436,9 @@ export default function AllianceChatWindow() {
 
   return (
     <div className="flex flex-col gap-4 min-h-[calc(100vh-140px)] md:min-h-[calc(100vh-160px)]">
+      <audio ref={notificationSoundRef} className="hidden" preload="auto">
+        <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
+      </audio>
       <div className="flex justify-end">
         <Button
           type="button"
