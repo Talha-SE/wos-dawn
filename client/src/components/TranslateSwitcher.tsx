@@ -447,6 +447,8 @@ export default function TranslateSwitcher() {
                         try {
                           persistAuto(false)
                           localStorage.setItem('wos_manual_lang', DEFAULT_OPTION.code)
+                          localStorage.removeItem('wos_geo_cc')
+                          localStorage.removeItem('wos_geo_cc_ts')
                           // Clear Google Translate cookie variants
                           document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
                           const host = window.location.hostname
