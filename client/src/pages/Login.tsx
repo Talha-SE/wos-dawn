@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import Button from '../components/Button'
 import Input from '../components/Input'
@@ -11,6 +12,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -35,7 +37,23 @@ export default function Login() {
           </div>
           <div>
             <label className="text-sm text-white/70">Password</label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <div className="relative">
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-white/60 hover:text-white transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           {error && <div className="text-sm text-red-400">{error}</div>}
           <Button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Sign in'}</Button>
