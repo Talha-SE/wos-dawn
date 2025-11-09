@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import Button from '../components/Button'
 import api from '../services/api'
 import { Settings, Mic } from 'lucide-react'
@@ -122,6 +124,14 @@ export default function ChatAi() {
   const chunksRef = useRef<Blob[]>([])
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+
+  const MarkdownCode = ({ inline, className, children, ...props }: any) => (
+    inline ? (
+      <code className={`bg-black/30 rounded px-1.5 py-0.5 ${className||''}`} {...props}>{children}</code>
+    ) : (
+      <pre className={className} {...props}><code>{children}</code></pre>
+    )
+  )
 
   function scrollToBottom() {
     if (!listRef.current) return
@@ -252,7 +262,23 @@ export default function ChatAi() {
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[82%] md:max-w-[60%] rounded-3xl px-4 py-3 md:px-5 md:py-3 shadow-sm space-y-3 ${m.role === 'user' ? 'bg-gradient-to-b from-primary/40 to-primary/25 text-white border border-primary/30' : 'bg-white/10 text-white/90 border border-white/15'}`}>
-              {m.content && <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.content}</div>}
+              {m.content && (
+                m.role === 'assistant' ? (
+                  <div className="markdown-body text-sm leading-relaxed break-words [&_pre]:bg-black/30 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-xl [&_pre]:p-3 [&_code]:text-[13px] [&_code]:font-mono [&_h1]:text-lg [&_h2]:text-base [&_h1,h2]:font-semibold [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-5 [&_table]:w-full [&_th,td]:border [&_th,td]:border-white/10 [&_th,td]:p-2">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-accent underline" />,
+                        code: MarkdownCode
+                      }}
+                    >
+                      {m.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.content}</div>
+                )
+              )}
               {m.imageUrls && m.imageUrls.length > 0 && (
                 <div className={`grid gap-2 ${m.imageUrls.length > 1 ? 'grid-cols-2' : ''}`}>
                   {m.imageUrls.map((url, idx) => (

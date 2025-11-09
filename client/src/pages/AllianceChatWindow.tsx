@@ -397,6 +397,11 @@ export default function AllianceChatWindow() {
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     placeholder="Type a message"
+                    name="chat-message"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    inputMode="text"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
