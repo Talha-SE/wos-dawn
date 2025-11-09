@@ -1,6 +1,6 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Gift, User, Menu, Shield, MessageSquare, ChevronDown, X } from 'lucide-react'
+import { Gift, User, Menu, Shield, MessageSquare, ChevronDown, X, LogOut } from 'lucide-react'
 import api from '../services/api'
 import logo from '../assets/wos-dawn.png'
 import { useAuth } from '../state/AuthContext'
@@ -9,13 +9,19 @@ type JoinedRoom = { code: string; name: string; state: number }
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }) {
   const { pathname } = useLocation()
-  const { token, refreshMe } = useAuth()
+  const nav = useNavigate()
+  const { token, refreshMe, logout } = useAuth()
   const [openRedeem, setOpenRedeem] = useState(true)
   const [openJoined, setOpenJoined] = useState(true)
   const [rooms, setRooms] = useState<JoinedRoom[]>([])
   const [loadingRooms, setLoadingRooms] = useState(false)
   const [roomsError, setRoomsError] = useState<string | null>(null)
   const fetchSeq = useRef(0)
+
+  function handleLogout() {
+    logout()
+    nav('/login')
+  }
 
   const loadRooms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     // bump sequence to ignore stale responses when multiple requests overlap
@@ -274,7 +280,28 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           )}
         </nav>
 
-        {/* Status card removed per request */}
+        {/* Logout Button - Fixed at Bottom */}
+        <div className="flex-none border-t border-white/10 p-3">
+          {collapsed ? (
+            <button
+              onClick={handleLogout}
+              className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-500/20 to-red-600/10 hover:from-red-500/30 hover:to-red-600/20 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 transition-all grid place-items-center shadow-lg hover:shadow-red-500/20 active:scale-95"
+              title="Logout"
+              aria-label="Logout"
+            >
+              <LogOut size={18} />
+            </button>
+          ) : (
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-br from-red-500/20 to-red-600/10 hover:from-red-500/30 hover:to-red-600/20 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 transition-all shadow-lg hover:shadow-red-500/20 active:scale-95 font-medium"
+              aria-label="Logout"
+            >
+              <LogOut size={18} />
+              <span>Logout</span>
+            </button>
+          )}
+        </div>
       </div>
     </aside>
   )

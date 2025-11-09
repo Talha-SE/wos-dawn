@@ -82,32 +82,34 @@ export default function Dashboard() {
         ref={headerRef}
         style={headerStyle}
       >
-        <div className="mx-auto max-w-7xl px-3 py-2 sm:py-3 md:px-8 md:py-4 flex flex-wrap items-center gap-2 md:gap-3 justify-between">
-          <div className="flex items-center gap-2 md:gap-4 min-w-0 w-full md:flex-1">
-            <button
-              type="button"
-              className="md:hidden h-10 w-10 rounded-xl border border-white/10 bg-white/5 text-white grid place-items-center"
-              onClick={() => setMobileOpen(true)}
-              aria-label="Open menu"
-            >
-              <Menu size={18} />
-            </button>
-            <img src={logo} alt="WOS Dawn" className="h-10 w-10 md:h-12 md:w-12 rounded-2xl object-cover shadow-xl" />
+        {/* Mobile Header - Minimal 3 buttons */}
+        <div className="md:hidden px-3 py-2 flex items-center justify-between">
+          <button
+            type="button"
+            className="h-10 w-10 rounded-full bg-white/5 hover:bg-white/10 text-white grid place-items-center transition-all active:scale-95"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <TranslateSwitcher />
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden md:flex mx-auto max-w-7xl px-8 py-4 items-center gap-3 justify-between">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <img src={logo} alt="WOS Dawn" className="h-12 w-12 rounded-2xl object-cover shadow-xl" />
             <div className="min-w-0">
-              <div className="text-[10px] md:text-xs uppercase tracking-widest text-white/40">WOS Dawn</div>
+              <div className="text-xs uppercase tracking-widest text-white/40">WOS Dawn</div>
               <div className="flex items-center gap-2 min-w-0">
-                <h1 className="font-display text-base md:text-2xl text-white tracking-tight whitespace-nowrap truncate max-w-[44vw] md:max-w-none">{title}</h1>
-                <span className="hidden md:inline-block rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-white/40">Command Center</span>
+                <h1 className="font-display text-2xl text-white tracking-tight whitespace-nowrap truncate">{title}</h1>
+                <span className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-wide text-white/40">Command Center</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2 text-sm text-white/70 w-full md:w-auto md:flex-nowrap flex-wrap justify-end">
+          <div className="flex items-center gap-2 text-sm text-white/70">
             <TranslateSwitcher />
-            {user?.email && <span className="hidden sm:inline">{user.email}</span>}
-            <button onClick={onLogout} className="button-ghost h-10 px-3 md:px-4 notranslate" translate="no" aria-label="Logout">
-              <span className="md:hidden grid place-items-center"><LogOut size={16} /></span>
-              <span className="hidden md:inline">Logout</span>
-            </button>
+            {user?.email && <span>{user.email}</span>}
           </div>
         </div>
       </header>
