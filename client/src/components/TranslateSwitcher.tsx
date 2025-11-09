@@ -65,8 +65,8 @@ const LANGUAGES: Language[] = [
   { code: 'dz', label: 'རྫོང་ཁ (Dzongkha)' }
 ]
 
-const DEFAULT_OPTION: Language = { code: '__default', label: 'Default' }
-const LANGUAGE_OPTIONS: Language[] = [DEFAULT_OPTION, ...LANGUAGES]
+const NONE_OPTION: Language = { code: '__none', label: 'None (Original)' }
+const LANGUAGE_OPTIONS: Language[] = [NONE_OPTION, ...LANGUAGES]
 
 const COUNTRY_TO_LANG: Record<string, string[]> = {
   // Americas
@@ -205,7 +205,7 @@ let fadeTimeout: number | undefined
 export default function TranslateSwitcher() {
   const [open, setOpen] = useState(false)
   const [ready, setReady] = useState(false)
-  const [current, setCurrent] = useState<Language>(DEFAULT_OPTION)
+  const [current, setCurrent] = useState<Language>(NONE_OPTION)
   const [query, setQuery] = useState('')
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -239,6 +239,45 @@ export default function TranslateSwitcher() {
     return LANGUAGES.find((l) => l.code.toLowerCase() === normalized || normalized.startsWith(l.code.toLowerCase()))
   }
 
+  function clearAllTranslationData() {
+    // Clear cookies
+    clearGoogTransCookies()
+    
+    // Clear localStorage
+    try {
+      localStorage.removeItem('wos_manual_lang')
+      localStorage.removeItem('wos_geo_cc')
+      localStorage.removeItem('wos_geo_cc_ts')
+    } catch {}
+    
+    // Clear sessionStorage if any translation data exists
+    try {
+      const keys = Object.keys(sessionStorage)
+      keys.forEach(key => {
+        if (key.includes('googtrans') || key.includes('translate')) {
+          sessionStorage.removeItem(key)
+        }
+      })
+    } catch {}
+    
+    // Reset Google Translate element
+    const select = document.querySelector<HTMLSelectElement>('#google_translate_element_container select')
+    if (select) {
+      select.selectedIndex = 0
+      select.dispatchEvent(new Event('change'))
+    }
+    
+    // Remove translation classes from body
+    document.body.classList.remove('translated-ltr', 'translated-rtl')
+    document.documentElement.classList.remove('translated-ltr', 'translated-rtl')
+    
+    // Remove any Google Translate injected elements
+    const gtElements = document.querySelectorAll('[id^="goog-gt-"], .goog-te-banner-frame, .skiptranslate')
+    gtElements.forEach(el => {
+      if (el.parentNode) el.parentNode.removeChild(el)
+    })
+  }
+
   async function detectAndApply() {
     const cacheKey = 'wos_geo_cc'
     const tsKey = 'wos_geo_cc_ts'
@@ -249,7 +288,7 @@ export default function TranslateSwitcher() {
       const cc = cached.toUpperCase()
       const primary = COUNTRY_TO_LANG[cc]?.[0]
       const match = findLanguageCandidate(primary)
-      applyLanguage(match || DEFAULT_OPTION, 'auto')
+      applyLanguage(match || NONE_OPTION, 'auto')
       return
     }
     async function getCC(): Promise<string | undefined> {
@@ -271,13 +310,13 @@ export default function TranslateSwitcher() {
     if (cc && COUNTRY_TO_LANG[cc]?.length) {
       const primary = COUNTRY_TO_LANG[cc][0]
       const match = findLanguageCandidate(primary)
-      applyLanguage(match || DEFAULT_OPTION)
+      applyLanguage(match || NONE_OPTION)
       return
     }
     // Fallback: try browser language only if CC is missing/unmapped
     const navLanguages: string[] = (navigator.languages as any) || (navigator.language ? [navigator.language] : [])
     const navMatch = navLanguages.map((l) => findLanguageCandidate(l)).find(Boolean)
-    applyLanguage(navMatch || DEFAULT_OPTION, 'auto')
+    applyLanguage(navMatch || NONE_OPTION, 'auto')
   }
 
   useEffect(() => {
@@ -342,16 +381,28 @@ export default function TranslateSwitcher() {
       setQuery('')
       return
     }
+    
+    // If "None" is selected, completely disable translation
+    if (lang.code === NONE_OPTION.code) {
+      clearAllTranslationData()
+      setCurrent(lang)
+      setOpen(false)
+      setQuery('')
+      if (source === 'manual') {
+        try { localStorage.setItem('wos_manual_lang', NONE_OPTION.code) } catch {}
+      }
+      // Force reload to ensure clean state without any translations
+      setTimeout(() => window.location.reload(), 100)
+      return
+    }
+    
     if (fadeTimeout) window.clearTimeout(fadeTimeout)
     document.documentElement.classList.add('translate-fading')
     document.body.classList.add('translate-fading')
-    if (lang.code === DEFAULT_OPTION.code) {
-      select.selectedIndex = 0
-      select.dispatchEvent(new Event('change'))
-    } else {
-      select.value = lang.code
-      select.dispatchEvent(new Event('change'))
-    }
+    
+    select.value = lang.code
+    select.dispatchEvent(new Event('change'))
+    
     setCurrent(lang)
     setOpen(false)
     setQuery('')
@@ -366,24 +417,19 @@ export default function TranslateSwitcher() {
 
   function restoreManual() {
     const saved = localStorage.getItem('wos_manual_lang')
-    // If no manual selection saved or it's default, clear everything
-    if (!saved || saved === DEFAULT_OPTION.code) {
-      clearGoogTransCookies()
-      setCurrent(DEFAULT_OPTION)
+    // If no manual selection saved or it's "None", clear everything
+    if (!saved || saved === NONE_OPTION.code) {
+      clearAllTranslationData()
+      setCurrent(NONE_OPTION)
       setOpen(false)
       setQuery('')
-      const select = document.querySelector<HTMLSelectElement>('#google_translate_element_container select')
-      if (select) {
-        select.selectedIndex = 0
-        select.dispatchEvent(new Event('change'))
-      }
       // Force page reload to clear any translation artifacts
       if (document.body.classList.contains('translated-ltr') || document.body.classList.contains('translated-rtl')) {
-        window.location.reload()
+        setTimeout(() => window.location.reload(), 100)
       }
       return
     }
-    const lang = LANGUAGE_OPTIONS.find((l) => l.code === saved) || DEFAULT_OPTION
+    const lang = LANGUAGE_OPTIONS.find((l) => l.code === saved) || NONE_OPTION
     applyLanguage(lang, 'manual')
   }
 
@@ -405,17 +451,12 @@ export default function TranslateSwitcher() {
             // Turning auto ON - detect and apply
             detectAndApply()
           } else {
-            // Turning auto OFF - restore manual or clear to default
+            // Turning auto OFF - restore manual or clear to none (no translation)
             const manualLang = localStorage.getItem('wos_manual_lang')
-            if (!manualLang || manualLang === DEFAULT_OPTION.code) {
-              // No manual selection, go back to default (no translation)
-              clearGoogTransCookies()
-              setCurrent(DEFAULT_OPTION)
-              const select = document.querySelector<HTMLSelectElement>('#google_translate_element_container select')
-              if (select) {
-                select.selectedIndex = 0
-                select.dispatchEvent(new Event('change'))
-              }
+            if (!manualLang || manualLang === NONE_OPTION.code) {
+              // No manual selection, go back to none (no translation)
+              clearAllTranslationData()
+              setCurrent(NONE_OPTION)
               // Reload to ensure clean state
               setTimeout(() => window.location.reload(), 100)
             } else {
@@ -468,19 +509,18 @@ export default function TranslateSwitcher() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (lang.code === DEFAULT_OPTION.code) {
+                      if (lang.code === NONE_OPTION.code) {
+                        // Turn off all translations and clear cache
                         try {
                           persistAuto(false)
-                          localStorage.setItem('wos_manual_lang', DEFAULT_OPTION.code)
-                          localStorage.removeItem('wos_geo_cc')
-                          localStorage.removeItem('wos_geo_cc_ts')
-                          // Clear Google Translate cookie variants
-                          document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
-                          const host = window.location.hostname
-                          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.${host}`
-                          document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${host}`
+                          clearAllTranslationData()
+                          localStorage.setItem('wos_manual_lang', NONE_OPTION.code)
                         } catch {}
-                        window.location.reload()
+                        setCurrent(NONE_OPTION)
+                        setOpen(false)
+                        setQuery('')
+                        // Reload to ensure completely clean state
+                        setTimeout(() => window.location.reload(), 100)
                       } else {
                         applyLanguage(lang, 'manual')
                       }
