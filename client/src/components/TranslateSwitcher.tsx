@@ -240,7 +240,7 @@ export default function TranslateSwitcher() {
       const cc = cached.toUpperCase()
       const primary = COUNTRY_TO_LANG[cc]?.[0]
       const match = findLanguageCandidate(primary)
-      applyLanguage(match || DEFAULT_OPTION)
+      applyLanguage(match || DEFAULT_OPTION, 'auto')
       return
     }
     async function getCC(): Promise<string | undefined> {
@@ -268,7 +268,7 @@ export default function TranslateSwitcher() {
     // Fallback: try browser language only if CC is missing/unmapped
     const navLanguages: string[] = (navigator.languages as any) || (navigator.language ? [navigator.language] : [])
     const navMatch = navLanguages.map((l) => findLanguageCandidate(l)).find(Boolean)
-    applyLanguage(navMatch || DEFAULT_OPTION)
+    applyLanguage(navMatch || DEFAULT_OPTION, 'auto')
   }
 
   useEffect(() => {
@@ -421,7 +421,7 @@ export default function TranslateSwitcher() {
                 <li key={lang.code}>
                   <button
                     type="button"
-                    onClick={() => applyLanguage(lang, 'manual')}
+                    onClick={() => { applyLanguage(lang, 'manual'); if (lang.code === DEFAULT_OPTION.code) { try { document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'; } catch {} window.location.reload(); } }}
                     className={`w-full text-left px-3 py-2 rounded-xl transition hover:bg-white/10 ${current.code === lang.code ? 'bg-primary/20 text-primary' : ''}`}
                     role="option"
                     aria-selected={current.code === lang.code}
