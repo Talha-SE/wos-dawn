@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import Button from '../components/Button'
 import Input from '../components/Input'
 import { useAuth } from '../state/AuthContext'
+import TranslateSwitcher from '../components/TranslateSwitcher'
 
 export default function Signup() {
   const nav = useNavigate()
@@ -26,6 +27,9 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen grid place-items-center p-4">
+      <div className="fixed top-4 right-4 z-40">
+        <TranslateSwitcher />
+      </div>
       <div className="card w-full max-w-md">
         <h1 className="text-2xl font-semibold mb-6">Create your account</h1>
         <form onSubmit={onSubmit} className="space-y-4">
