@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, Users, MessageSquare, Gift, Calendar, Activity, Cog, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, MessageSquare, Gift, Calendar, Activity, Cog, LogOut, Headphones } from 'lucide-react'
  import type { ReactNode } from 'react'
  
 function NavItem({ to, icon, label, active }: { to: string; icon: ReactNode; label: string; active: boolean }) {
@@ -38,6 +38,7 @@ export default function AdminSidebar() {
         <NavItem to="/admin/rooms" icon={<MessageSquare size={18} />} label="Alliance Rooms" active={pathname.includes('/admin/rooms')} />
         <NavItem to="/admin/gift-codes" icon={<Gift size={18} />} label="Gift Codes" active={pathname.includes('/admin/gift-codes')} />
         <NavItem to="/admin/slots" icon={<Calendar size={18} />} label="SVS Slots" active={pathname.includes('/admin/slots')} />
+        <NavItem to="/admin/support-tickets" icon={<Headphones size={18} />} label="Support Tickets" active={pathname.includes('/admin/support-tickets')} />
         <NavItem to="/admin/activity-logs" icon={<Activity size={18} />} label="Activity Logs" active={pathname.includes('/admin/activity-logs')} />
         <div className="my-2 border-t border-white/10" />
         <NavItem to="/admin/settings" icon={<Cog size={18} />} label="Settings" active={pathname.includes('/admin/settings')} />

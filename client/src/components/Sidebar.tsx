@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Gift, User, Menu, Shield, MessageSquare, ChevronDown, X, LogOut } from 'lucide-react'
+import { Gift, User, Menu, Shield, MessageSquare, ChevronDown, X, LogOut, Headphones } from 'lucide-react'
 import api from '../services/api'
 import logo from '../assets/wos-dawn.png'
 import { useAuth } from '../state/AuthContext'
@@ -203,6 +203,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             icon={<MessageSquare size={18} />}
             collapsed={collapsed}
             label="Chat AI"
+            onNavigate={onMobileClose}
+          />
+          <NavItem
+            to="/dashboard/contact-admin"
+            active={pathname.includes('/contact-admin')}
+            icon={<Headphones size={18} />}
+            collapsed={collapsed}
+            label="Contact Admin"
             onNavigate={onMobileClose}
           />
           {collapsed ? (

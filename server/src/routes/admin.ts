@@ -7,7 +7,8 @@ import AllianceMembership from '../models/AllianceMembership';
 import AllianceMessage from '../models/AllianceMessage';
 import SlotReservation from '../models/SlotReservation';
 import { ActivityLog } from '../models/ActivityLog';
-import { requireAuth, requireAdmin } from '../middleware/auth';
+import { SupportTicket } from '../models/SupportTicket';
+import { requireAuth, requireAdmin, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
@@ -415,6 +416,162 @@ router.get('/health-check', async (_req, res) => {
     });
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Health check failed' });
+  }
+});
+
+// Get all support tickets (admin)
+router.get('/support/tickets', async (req, res) => {
+  try {
+    const { status, type, priority } = req.query;
+    
+    const query: any = {};
+    if (status) query.status = status;
+    if (type) query.type = type;
+    if (priority) query.priority = priority;
+
+    const tickets = await SupportTicket.find(query)
+      .sort({ createdAt: -1 })
+      .populate('userId', 'email gameId')
+      .populate('reportedUserId', 'email gameId')
+      .lean();
+
+    res.json(tickets);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch tickets' });
+  }
+});
+
+// Get ticket statistics (admin)
+router.get('/support/stats', async (_req, res) => {
+  try {
+    const [total, pending, inProgress, resolved, closed, byType] = await Promise.all([
+      SupportTicket.countDocuments(),
+      SupportTicket.countDocuments({ status: 'pending' }),
+      SupportTicket.countDocuments({ status: 'in_progress' }),
+      SupportTicket.countDocuments({ status: 'resolved' }),
+      SupportTicket.countDocuments({ status: 'closed' }),
+      SupportTicket.aggregate([
+        { $group: { _id: '$type', count: { $sum: 1 } } }
+      ])
+    ]);
+
+    res.json({
+      total,
+      pending,
+      inProgress,
+      resolved,
+      closed,
+      byType: byType.reduce((acc: any, item: any) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {})
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch stats' });
+  }
+});
+
+// Get a specific ticket (admin)
+router.get('/support/tickets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const ticket = await SupportTicket.findById(id)
+      .populate('userId', 'email gameId gameName')
+      .populate('reportedUserId', 'email gameId gameName')
+      .lean();
+    
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    res.json(ticket);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch ticket' });
+  }
+});
+
+// Update ticket status and priority (admin)
+router.put('/support/tickets/:id/status', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { status, priority, assignedTo } = req.body;
+
+    const update: any = {};
+    if (status) update.status = status;
+    if (priority) update.priority = priority;
+    if (assignedTo !== undefined) update.assignedTo = assignedTo;
+    if (status === 'resolved' || status === 'closed') {
+      update.resolvedAt = new Date();
+    }
+
+    const ticket = await SupportTicket.findByIdAndUpdate(
+      id,
+      { $set: update },
+      { new: true }
+    );
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    res.json({ message: 'Ticket updated successfully', ticket });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to update ticket' });
+  }
+});
+
+// Add admin remark to ticket
+router.post('/support/tickets/:id/remarks', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { remark } = req.body;
+
+    if (!remark) {
+      return res.status(400).json({ message: 'Remark is required' });
+    }
+
+    const user = await User.findById(req.userId).select('email');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const ticket = await SupportTicket.findByIdAndUpdate(
+      id,
+      {
+        $push: {
+          adminRemarks: {
+            remark,
+            addedBy: user.email,
+            addedAt: new Date()
+          }
+        }
+      },
+      { new: true }
+    );
+
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    res.json({ message: 'Remark added successfully', ticket });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to add remark' });
+  }
+});
+
+// Delete ticket (admin)
+router.delete('/support/tickets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const ticket = await SupportTicket.findByIdAndDelete(id);
+    
+    if (!ticket) {
+      return res.status(404).json({ message: 'Ticket not found' });
+    }
+
+    res.json({ message: 'Ticket deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to delete ticket' });
   }
 });
 

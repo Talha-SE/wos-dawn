@@ -5,6 +5,7 @@ import Users from './pages/Users'
 import Rooms from './pages/Rooms'
 import GiftCodes from './pages/GiftCodes'
 import Slots from './pages/Slots'
+import SupportTickets from './pages/SupportTickets'
 import ActivityLogs from './pages/ActivityLogs'
 import Settings from './pages/Settings'
 
@@ -24,6 +25,7 @@ export default function AdminApp() {
             <Route path="rooms" element={<Rooms />} />
             <Route path="gift-codes" element={<GiftCodes />} />
             <Route path="slots" element={<Slots />} />
+            <Route path="support-tickets" element={<SupportTickets />} />
             <Route path="activity-logs" element={<ActivityLogs />} />
             <Route path="settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="overview" replace />} />

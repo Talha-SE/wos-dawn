@@ -6,6 +6,7 @@ import AllianceRedeem from './AllianceRedeem'
 import Svs from './Svs'
 import ChatAi from './ChatAi'
 import AllianceChatWindow from './AllianceChatWindow'
+import ContactAdmin from './ContactAdmin'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../state/AuthContext'
 import TranslateSwitcher from '../components/TranslateSwitcher'
@@ -30,6 +31,7 @@ export default function Dashboard() {
     if (p.includes('/svs')) return 'SVS'
     if (p.includes('/chat-ai')) return 'Chat AI'
     if (p.includes('/alliance-chat')) return 'Alliance Chat Window'
+    if (p.includes('/contact-admin')) return 'Contact Admin'
     return 'Dashboard'
   }
   const title = getTitle(location.pathname)
@@ -130,10 +132,10 @@ export default function Dashboard() {
           onMobileClose={() => setMobileOpen(false)}
         />
         <main
-          className={`flex-1 ${location.pathname.includes('/alliance-chat') || location.pathname.includes('/chat-ai') ? '' : 'px-3 md:px-8'} pb-10 transition-all duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-64'}`}
+          className={`flex-1 ${location.pathname.includes('/alliance-chat') || location.pathname.includes('/chat-ai') || location.pathname.includes('/contact-admin') ? '' : 'px-3 md:px-8'} pb-10 transition-all duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-64'}`}
           style={mainStyle}
         >
-          <div className={location.pathname.includes('/alliance-chat') || location.pathname.includes('/chat-ai') ? '' : 'space-y-6 animate-fadeUp'} style={{ animationDelay: '0.08s' }}>
+          <div className={location.pathname.includes('/alliance-chat') || location.pathname.includes('/chat-ai') || location.pathname.includes('/contact-admin') ? '' : 'space-y-6 animate-fadeUp'} style={{ animationDelay: '0.08s' }}>
             <Routes>
               <Route path="/" element={<Navigate to="profile" replace />} />
               <Route path="profile" element={<ProfilePage />} />
@@ -144,6 +146,7 @@ export default function Dashboard() {
               <Route path="chat-ai" element={<ChatAi />} />
               <Route path="alliance-chat" element={<AllianceChatWindow />} />
               <Route path="alliance-chat/:code" element={<AllianceChatWindow />} />
+              <Route path="contact-admin" element={<ContactAdmin />} />
             </Routes>
           </div>
         </main>
