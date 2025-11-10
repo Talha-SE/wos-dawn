@@ -92,18 +92,22 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
-// Cancel a reservation by ID (only by the user who created it)
-router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
+// Cancel/delete a slot reservation (only the user who reserved it can cancel)
+router.delete('/', requireAuth, async (req: AuthRequest, res) => {
   try {
-    const { id } = req.params as { id: string }
+    const state = String(req.query.state || '').trim()
+    const date = String(req.query.date || '').trim()
+    if (!state || !date) return res.status(400).json({ message: 'state and date are required' })
+
     const userId = req.userId!
-    const existing = await SlotReservation.findById(id)
-    if (!existing) return res.status(404).json({ message: 'Reservation not found' })
-    if (String(existing.reservedBy) !== String(userId)) {
-      return res.status(403).json({ message: 'Not allowed to cancel this reservation' })
+
+    const reservation = await SlotReservation.findOne({ state, date, reservedBy: userId })
+    if (!reservation) {
+      return res.status(404).json({ message: 'No reservation found for this state and date' })
     }
-    await SlotReservation.findByIdAndDelete(id)
-    res.json({ ok: true })
+
+    await SlotReservation.deleteOne({ _id: reservation._id })
+    res.json({ ok: true, message: 'Reservation cancelled successfully' })
   } catch (e: any) {
     res.status(500).json({ message: e?.message || 'Failed to cancel reservation' })
   }

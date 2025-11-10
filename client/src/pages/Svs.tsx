@@ -3,7 +3,7 @@ import Input from '../components/Input'
 import Button from '../components/Button'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
-import { Clock, ShieldCheck, User as UserIcon, MapPin, CalendarDays, XCircle } from 'lucide-react'
+import { Clock, ShieldCheck, User as UserIcon, MapPin, CalendarDays } from 'lucide-react'
 
 type SlotItem = {
   _id: string
@@ -13,7 +13,7 @@ type SlotItem = {
   slotIndex: number
   assignedGameId?: string
   assignedPlayerName?: string
-  reservedBy?: string
+  reservedBy: string
 }
 
 function toDateUTCString(d: Date) {
@@ -48,7 +48,8 @@ export default function Svs() {
   const [pendingIndex, setPendingIndex] = useState<number | null>(null)
   const [durationInput, setDurationInput] = useState<string>('30')
   const [durationBySlot, setDurationBySlot] = useState<Record<number, number>>({})
-  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
 
   useEffect(() => {
     setGameId(user?.gameId || '')
@@ -63,19 +64,6 @@ export default function Svs() {
       setItems(data?.items || [])
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function cancelReservation(id: string) {
-    setCancellingId(id)
-    try {
-      await api.delete(`/slots/${id}`)
-      await load()
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || 'Failed to cancel'
-      alert(msg)
-    } finally {
-      setCancellingId(null)
     }
   }
 
@@ -113,7 +101,26 @@ export default function Svs() {
     }
   }
 
+  async function cancelReservation() {
+    if (!stateName.trim()) return
+    setCancelling(true)
+    try {
+      await api.delete('/slots', {
+        params: { state: stateName.trim(), date }
+      })
+      await load()
+      alert('Slot reservation cancelled successfully')
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || 'Failed to cancel reservation'
+      alert(msg)
+    } finally {
+      setCancelling(false)
+      setCancelConfirmOpen(false)
+    }
+  }
+
   const slots = useMemo(() => Array.from({ length: 48 }, (_, i) => i), [])
+  const userReservation = useMemo(() => items.find(item => item.reservedBy === user?.id), [items, user?.id])
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 space-y-5">
@@ -132,9 +139,22 @@ export default function Svs() {
 
       {/* Form Section */}
       <section className="glass rounded-2xl px-5 md:px-6 py-5 border border-white/10 shadow-lg animate-fadeUp" style={{ animationDelay: '0.05s' }}>
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-white">Slot Configuration</h2>
-          <p className="text-xs text-white/60 mt-1">Fill in details to view and reserve slots</p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Slot Configuration</h2>
+            <p className="text-xs text-white/60 mt-1">Fill in details to view and reserve slots</p>
+          </div>
+          {userReservation && (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setCancelConfirmOpen(true)}
+              disabled={cancelling}
+              className="flex items-center gap-2"
+            >
+              {cancelling ? 'Cancelling...' : 'Cancel My Reservation'}
+            </Button>
+          )}
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
@@ -206,50 +226,29 @@ export default function Svs() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {slots.map((i) => {
               const taken = map.get(i)
-              if (taken) {
-                return (
-                  <div
-                    key={i}
-                    className={`group relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200 min-h-[100px] flex flex-col justify-between cursor-default border-emerald-400/30 bg-gradient-to-br from-emerald-400/15 to-emerald-500/5 ${reserving === i ? 'opacity-60' : 'opacity-100'}`}
-                  >
-                    <div className="flex items-center gap-1.5 text-[10px] text-white/50 font-medium">
-                      <Clock size={10} />
-                      <span>{slotLabel(i)}</span>
-                    </div>
-                    <div className="mt-2 space-y-0.5">
-                      <div className="text-xs font-semibold text-emerald-300 truncate">{taken.assignedPlayerName || 'Reserved'}</div>
-                      <div className="text-[10px] text-white/60 font-mono truncate">ID: {taken.assignedGameId || '—'}</div>
-                      <div className="text-[10px] text-white/50 truncate">{taken.allianceName}</div>
-                    </div>
-                    {taken.reservedBy === user?.id && (
-                      <button
-                        onClick={() => cancelReservation(taken._id)}
-                        disabled={cancellingId === taken._id}
-                        className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/10 px-2.5 py-1 text-xs text-white hover:bg-white/20 active:scale-95"
-                        title="Cancel this reservation"
-                      >
-                        <XCircle size={14} className="text-red-300" />
-                        {cancellingId === taken._id ? 'Cancelling…' : 'Cancel'}
-                      </button>
-                    )}
-                  </div>
-                )
-              }
               return (
-                <button
-                  key={i}
-                  disabled={reserving === i || !stateName.trim() || !allianceName.trim()}
-                  onClick={() => requestReserve(i)}
-                  className={`group relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200 min-h-[100px] flex flex-col justify-between border-white/10 bg-white/5 hover:border-blue-500/40 hover:bg-white/10 active:scale-95 ${reserving === i ? 'opacity-60' : 'opacity-100'}`}
-                >
-                  <div className="flex items-center gap-1.5 text-[10px] text-white/50 font-medium">
-                    <Clock size={10} />
-                    <span>{slotLabel(i)}</span>
+              <button
+                key={i}
+                disabled={!!taken || reserving === i || !stateName.trim() || !allianceName.trim()}
+                onClick={() => requestReserve(i)}
+                className={`group relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200 min-h-[100px] flex flex-col justify-between ${taken ? 'cursor-not-allowed border-emerald-400/30 bg-gradient-to-br from-emerald-400/15 to-emerald-500/5' : 'border-white/10 bg-white/5 hover:border-blue-500/40 hover:bg-white/10 active:scale-95'} ${reserving === i ? 'opacity-60' : 'opacity-100'}`}
+              >
+                <div className="flex items-center gap-1.5 text-[10px] text-white/50 font-medium">
+                  <Clock size={10} />
+                  <span>{slotLabel(i)}</span>
+                </div>
+                {taken ? (
+                  <div className="mt-2 space-y-0.5">
+                    <div className="text-xs font-semibold text-emerald-300 truncate">{taken.assignedPlayerName || 'Reserved'}</div>
+                    <div className="text-[10px] text-white/60 font-mono truncate">ID: {taken.assignedGameId || '—'}</div>
+                    <div className="text-[10px] text-white/50 truncate">{taken.allianceName}</div>
                   </div>
+                ) : (
                   <div className="mt-2">
                     <span className="text-xs font-semibold text-white/70">Available</span>
                   </div>
-                </button>
+                )}
+              </button>
               )
             })}
           </div>
@@ -298,6 +297,47 @@ export default function Svs() {
             </div>
           </div>
         )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancelConfirmOpen && userReservation && (
+        <div className="fixed inset-0 z-50 grid place-items-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCancelConfirmOpen(false)} />
+          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl">
+            <div className="flex items-center gap-3 mb-2 text-white">
+              <ShieldCheck size={18} className="text-red-400" />
+              <h4 className="font-display text-lg">Cancel Reservation</h4>
+            </div>
+            <p className="text-white/70 text-sm leading-relaxed">
+              Are you sure you want to cancel your reservation for <span className="font-semibold text-white">{slotLabel(userReservation.slotIndex)}</span>?
+            </p>
+            <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
+              <div className="text-xs text-white/50 mb-1">Current Reservation Details:</div>
+              <div className="text-sm text-white/80 space-y-1">
+                <div><span className="text-white/50">Alliance:</span> <span className="font-medium">{userReservation.allianceName}</span></div>
+                <div><span className="text-white/50">Player:</span> <span className="font-medium">{userReservation.assignedPlayerName || '—'}</span></div>
+                <div><span className="text-white/50">Game ID:</span> <span className="font-mono text-xs">{userReservation.assignedGameId || '—'}</span></div>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setCancelConfirmOpen(false)}
+                className="h-11 rounded-xl"
+              >
+                Keep Reservation
+              </Button>
+              <Button
+                variant="danger"
+                onClick={cancelReservation}
+                disabled={cancelling}
+                className="h-11 rounded-xl"
+              >
+                {cancelling ? 'Cancelling…' : 'Cancel Slot'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
