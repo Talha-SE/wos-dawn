@@ -441,7 +441,7 @@ export default function AllianceChatWindow() {
         <audio ref={notificationSoundRef} className="hidden" preload="auto">
           <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
         </audio>
-        <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] mt-2 md:mt-6">
+        <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] mt-2 md:mt-6 pb-20 md:pb-24">
           {/* Header Bar */}
           <div className="flex-none mb-3 md:mb-4">
             <div className="flex items-center justify-between gap-3 px-3 md:px-8">
@@ -522,8 +522,7 @@ export default function AllianceChatWindow() {
           <div className="relative flex-1 overflow-hidden">
             <div
               ref={listRef}
-              className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-3 scrollbar-elegant"
-              style={{ paddingBottom: '120px' }}
+              className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-3 scrollbar-elegant pb-4"
             >
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
@@ -590,7 +589,7 @@ export default function AllianceChatWindow() {
           </div>
 
           {/* Floating Typing Bar */}
-          <div className="absolute left-0 right-0 bottom-0 flex justify-center px-4 md:px-6 pb-4 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent pt-6 pointer-events-none">
+          <div className="fixed left-0 right-0 bottom-0 flex justify-center px-4 md:px-6 pb-4 md:pb-6 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent pt-6 pointer-events-none z-40">
             <div className="pointer-events-auto w-full max-w-4xl">
               <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl border border-white/10 shadow-2xl px-3 md:px-4 py-3">
                 {/* Voice Button */}

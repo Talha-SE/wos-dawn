@@ -92,4 +92,21 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
+// Cancel a reservation by ID (only by the user who created it)
+router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params as { id: string }
+    const userId = req.userId!
+    const existing = await SlotReservation.findById(id)
+    if (!existing) return res.status(404).json({ message: 'Reservation not found' })
+    if (String(existing.reservedBy) !== String(userId)) {
+      return res.status(403).json({ message: 'Not allowed to cancel this reservation' })
+    }
+    await SlotReservation.findByIdAndDelete(id)
+    res.json({ ok: true })
+  } catch (e: any) {
+    res.status(500).json({ message: e?.message || 'Failed to cancel reservation' })
+  }
+})
+
 export default router
