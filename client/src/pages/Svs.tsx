@@ -103,15 +103,18 @@ export default function Svs() {
 
   async function cancelReservation() {
     if (!stateName.trim()) return
+    console.log('Cancelling reservation with state:', stateName, 'date:', date)
     setCancelling(true)
     try {
       await api.delete('/slots', {
         params: { state: stateName.trim(), date }
       })
+      console.log('Reservation cancelled successfully')
       await load()
       alert('Slot reservation cancelled successfully')
     } catch (e: any) {
       const msg = e?.response?.data?.message || 'Failed to cancel reservation'
+      console.error('Failed to cancel reservation:', e)
       alert(msg)
     } finally {
       setCancelling(false)
@@ -124,6 +127,14 @@ export default function Svs() {
     const userId = user?.id || (user as any)?._id
     return userId ? items.find(item => item.reservedBy === String(userId)) : undefined
   }, [items, user])
+
+  useEffect(() => {
+    console.log('Modal state changed:', {
+      cancelConfirmOpen,
+      userReservation,
+      shouldShowModal: cancelConfirmOpen && !!userReservation
+    })
+  }, [cancelConfirmOpen, userReservation])
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 space-y-5">
@@ -272,6 +283,8 @@ export default function Svs() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
+                        console.log('Delete button clicked, opening modal')
+                        console.log('User reservation:', userReservation)
                         setCancelConfirmOpen(true)
                       }}
                       disabled={cancelling}
@@ -336,7 +349,10 @@ export default function Svs() {
       {/* Cancel Confirmation Modal */}
       {cancelConfirmOpen && userReservation && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4 animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setCancelConfirmOpen(false)} />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => {
+            console.log('Modal backdrop clicked, closing modal')
+            setCancelConfirmOpen(false)
+          }} />
           <div className="relative w-full max-w-lg rounded-2xl border border-red-500/30 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 p-6 shadow-2xl shadow-red-500/20 animate-in zoom-in-95 duration-200">
             {/* Header with Icon */}
             <div className="flex items-start gap-4 mb-4">
