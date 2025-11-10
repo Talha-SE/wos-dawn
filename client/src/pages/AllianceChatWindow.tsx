@@ -339,30 +339,45 @@ export default function AllianceChatWindow() {
 
   function handleSse(event: MessageEvent) {
     try {
+      console.log('Raw SSE event data:', event.data)
       const data = JSON.parse(event.data)
+      console.log('Parsed SSE data:', data)
+      
       if (data?.type === 'message' && data.payload) {
         const payload: Message = data.payload
+        console.log('Adding message to state:', payload)
+        console.log('Is my message?', payload.senderEmail === user?.email)
+        
         setMessages((prev) => {
+          console.log('Current messages before update:', prev.length)
           const filtered = prev.filter((m) => !(m._id.startsWith('temp-') && m.content === payload.content && m.senderEmail === payload.senderEmail))
-          return [...filtered, payload]
+          const newMessages = [...filtered, payload]
+          console.log('Messages after update:', newMessages.length)
+          return newMessages
         })
+        
         if (notificationSoundRef.current && payload.senderEmail !== user?.email) {
+          console.log('Playing notification sound for incoming message')
           notificationSoundRef.current.currentTime = 0
           notificationSoundRef.current.play().catch(() => undefined)
         }
         scrollToBottom()
       } else if (data?.type === 'message_deleted' && data.payload?._id) {
         const id = data.payload._id as string
+        console.log('Removing deleted message:', id)
         setMessages((prev) => prev.filter((m) => m._id !== id))
+      } else {
+        console.log('Unknown SSE message type:', data?.type)
       }
     } catch (err) {
-      console.error('SSE parse error', err)
+      console.error('SSE parse error', err, 'Raw data:', event.data)
     }
   }
 
   async function sendMessage() {
     if (!joined?.code || !messageText.trim() || sending) return
     const content = messageText.trim()
+    console.log('Sending message:', content, 'to room:', joined.code)
     setSending(true)
     const optimistic: Message = {
       _id: `temp-${Date.now()}`,
@@ -372,11 +387,14 @@ export default function AllianceChatWindow() {
       content,
       createdAt: new Date().toISOString()
     }
+    console.log('Adding optimistic message:', optimistic)
     setMessages((prev) => [...prev, optimistic])
     setMessageText('')
     scrollToBottom()
     try {
-      await api.post(`/alliance/rooms/${joined.code}/messages`, { content })
+      console.log('Calling API to send message...')
+      const response = await api.post(`/alliance/rooms/${joined.code}/messages`, { content })
+      console.log('Message sent successfully, API response:', response.data)
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m._id !== optimistic._id))
     } finally {
