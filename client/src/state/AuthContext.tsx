@@ -6,7 +6,7 @@ type User = { id: string; email: string; gameId?: string; gameName?: string; aut
 type Ctx = {
   token: string | null
   user: User | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User>
   signup: (email: string, password: string, confirm: string, gameName?: string) => Promise<void>
   logout: () => void
   refreshMe: () => Promise<void>
@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data } = await api.post<{ token: string; user: User }>('/auth/login', { email, password })
     setToken(data.token)
     setUser(data.user)
+    return data.user
   }
 
   async function signup(email: string, password: string, confirm: string, gameName?: string) {

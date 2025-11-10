@@ -21,27 +21,41 @@ export default function Login() {
     const url = new URL(window.location.href)
     const r = (url.searchParams.get('role') || '').toLowerCase()
     if (r === 'admin') setRole('admin')
+    // prefill last used email
+    try {
+      const last = localStorage.getItem('last_email')
+      if (last) setEmail(last)
+    } catch {}
   }, [])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    const em = email.trim()
+    const pw = password
+    // quick client-side validation to avoid unnecessary request
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+      setError('Please enter a valid email address')
+      return
+    }
+    if (!pw) {
+      setError('Password is required')
+      return
+    }
     setLoading(true)
     try {
-      await login(email, password)
-      
-      // Check if user is admin after login
-      const { data } = await api.get('/user/me')
-      
+      const user = await login(em, pw)
+      try { localStorage.setItem('last_email', em) } catch {}
       if (role === 'admin') {
-        if (!data.isAdmin) {
-          throw new Error('You do not have admin privileges')
+        if (!user?.isAdmin) {
+          setError('You do not have admin privileges')
+          return
         }
         localStorage.setItem('admin_session', '1')
         nav('/admin')
-      } else {
-        nav('/dashboard')
+        return
       }
+      nav('/dashboard')
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.message || 'Login failed')
     } finally { setLoading(false) }
@@ -114,7 +128,7 @@ export default function Login() {
               <Input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => { setEmail(e.target.value); try { localStorage.setItem('last_email', e.target.value) } catch {} }}
                 required
                 placeholder="Enter your email"
                 className="bg-white/5 border-white/10 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
