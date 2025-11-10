@@ -9,6 +9,7 @@ export interface IUser extends Document {
   redeemedCodes: Types.ObjectId[];
   suspended: boolean;
   suspendedUntil?: Date;
+  isAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,7 +23,8 @@ const UserSchema = new Schema<IUser>(
     automationEnabled: { type: Boolean, default: false },
     redeemedCodes: [{ type: Schema.Types.ObjectId, ref: 'GiftCode', default: [] }],
     suspended: { type: Boolean, default: false },
-    suspendedUntil: { type: Date }
+    suspendedUntil: { type: Date },
+    isAdmin: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

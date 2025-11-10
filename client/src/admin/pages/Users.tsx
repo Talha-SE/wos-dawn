@@ -12,8 +12,17 @@ type UserRow = {
   automationEnabled: boolean
   suspended: boolean
   suspendedUntil?: string
+  isAdmin: boolean
   createdAt: string
   updatedAt: string
+  profile?: {
+    nickname: string
+    kid: number
+    stove_lv: number
+    stove_lv_content: string | number
+    avatar_image?: string
+    total_recharge_amount: number
+  }
 }
 
 export default function Users() {
@@ -32,15 +41,14 @@ export default function Users() {
   })
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState<{ [key: string]: boolean }>({})
-  const secret = localStorage.getItem('admin_secret') || ''
 
   async function load() {
-    if (!secret) return
     setLoading(true)
     try {
-      const { data } = await api.get<UserRow[]>('/admin/users', { headers: { 'x-admin-secret': secret } })
+      const { data } = await api.get<UserRow[]>('/admin/users')
       setRows(Array.isArray(data) ? data : [])
-    } catch {
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Failed to load users')
       setRows([])
     } finally {
       setLoading(false)
@@ -49,8 +57,7 @@ export default function Users() {
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secret])
+  }, [])
 
   function startEdit(user: UserRow) {
     setEditingId(user._id)
@@ -81,7 +88,7 @@ export default function Users() {
         suspendedUntil: editForm.suspendedUntil || null
       }
       if (editForm.password) payload.password = editForm.password
-      await api.put(`/admin/users/${userId}`, payload, { headers: { 'x-admin-secret': secret } })
+      await api.put(`/admin/users/${userId}`, payload)
       await load()
       cancelEdit()
     } catch (e: any) {
@@ -92,7 +99,7 @@ export default function Users() {
   async function deleteUser(userId: string, email: string) {
     if (!confirm(`Permanently delete user "${email}" and all their data (rooms, memberships, slots)? This cannot be undone!`)) return
     try {
-      await api.delete(`/admin/users/${userId}`, { headers: { 'x-admin-secret': secret } })
+      await api.delete(`/admin/users/${userId}`)
       await load()
     } catch (e: any) {
       alert(e?.response?.data?.message || 'Failed to delete user')
@@ -102,7 +109,7 @@ export default function Users() {
   async function suspendUser(userId: string, hours: number) {
     const suspendedUntil = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString()
     try {
-      await api.put(`/admin/users/${userId}`, { suspended: true, suspendedUntil }, { headers: { 'x-admin-secret': secret } })
+      await api.put(`/admin/users/${userId}`, { suspended: true, suspendedUntil })
       await load()
     } catch (e: any) {
       alert(e?.response?.data?.message || 'Failed to suspend user')
@@ -111,7 +118,7 @@ export default function Users() {
 
   async function unsuspendUser(userId: string) {
     try {
-      await api.put(`/admin/users/${userId}`, { suspended: false, suspendedUntil: null }, { headers: { 'x-admin-secret': secret } })
+      await api.put(`/admin/users/${userId}`, { suspended: false, suspendedUntil: null })
       await load()
     } catch (e: any) {
       alert(e?.response?.data?.message || 'Failed to unsuspend user')
@@ -124,12 +131,11 @@ export default function Users() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white">User Management</h1>
-        <Button onClick={load} disabled={loading || !secret}>{loading ? 'Loading…' : 'Refresh'}</Button>
+        <Button onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Button>
       </div>
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
         <Input placeholder="Search by email..." value={q} onChange={(e) => setQ(e.target.value)} className="bg-transparent border-none text-white" />
       </div>
-      {!secret && <div className="text-white/60 text-sm">Set Admin Secret in Settings to manage users.</div>}
       <div className="space-y-3">
         {filtered.map((user) => (
           <div key={user._id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -200,8 +206,8 @@ export default function Users() {
                   </div>
                 </div>
                 {expandedId === user._id && (
-                  <div className="pt-3 border-t border-white/10 space-y-3">
-                    <div className="grid md:grid-cols-2 gap-3 text-sm">
+                  <div className="pt-3 border-t border-white/10 space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <div className="text-white/60 text-xs mb-1">Password Hash</div>
                         <div className="flex items-center gap-2">
@@ -219,7 +225,55 @@ export default function Users() {
                           {user.gameId && user.gameName ? `${user.gameName} (${user.gameId})` : '—'}
                         </div>
                       </div>
+                      <div>
+                        <div className="text-white/60 text-xs mb-1">User ID</div>
+                        <code className="text-white/80 font-mono text-xs">{user._id}</code>
+                      </div>
+                      <div>
+                        <div className="text-white/60 text-xs mb-1">Admin Status</div>
+                        <div className="text-white/80">
+                          {user.isAdmin ? (
+                            <span className="text-xs px-2 py-1 rounded bg-purple-600/20 text-purple-400 border border-purple-600/30">Admin User</span>
+                          ) : (
+                            <span className="text-xs px-2 py-1 rounded bg-white/5 text-white/50 border border-white/10">Regular User</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
+
+                    {user.profile && (
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/20">
+                        <h4 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-400" />
+                          WOS Game Profile
+                        </h4>
+                        <div className="grid md:grid-cols-3 gap-3 text-sm">
+                          <div>
+                            <div className="text-white/60 text-xs mb-1">Nickname</div>
+                            <div className="text-white font-medium">{user.profile.nickname}</div>
+                          </div>
+                          <div>
+                            <div className="text-white/60 text-xs mb-1">Kingdom ID</div>
+                            <div className="text-white font-medium">{user.profile.kid}</div>
+                          </div>
+                          <div>
+                            <div className="text-white/60 text-xs mb-1">Stove Level</div>
+                            <div className="text-white font-medium">{user.profile.stove_lv} ({user.profile.stove_lv_content})</div>
+                          </div>
+                          <div>
+                            <div className="text-white/60 text-xs mb-1">Total Recharge</div>
+                            <div className="text-white font-medium">${user.profile.total_recharge_amount}</div>
+                          </div>
+                          {user.profile.avatar_image && (
+                            <div className="md:col-span-2">
+                              <div className="text-white/60 text-xs mb-1">Avatar</div>
+                              <img src={user.profile.avatar_image} alt="Avatar" className="w-12 h-12 rounded-lg border border-white/20" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {user.suspended && user.suspendedUntil && (
                       <div className="text-sm">
                         <div className="text-white/60 text-xs mb-1">Suspended Until</div>
@@ -246,7 +300,7 @@ export default function Users() {
         ))}
         {filtered.length === 0 && (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50">
-            {loading ? 'Loading users…' : (secret ? 'No users found' : 'Set Admin Secret in Settings')}
+            {loading ? 'Loading users…' : 'No users found'}
           </div>
         )}
       </div>

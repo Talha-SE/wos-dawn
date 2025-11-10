@@ -41,10 +41,13 @@ WOS-DAWN/
 PORT=4000
 CORS_ORIGIN=http://localhost:5173
 JWT_SECRET=<random-strong-secret>
-ADMIN_SECRET=<optional-secret-for-admin-endpoints>
+ADMIN_EMAIL=your-admin@example.com
 ENABLE_CRON=true
 MONGODB_URI=mongodb+srv://<user>:<pass>@<cluster>/<db>?retryWrites=true&w=majority&appName=<app>
 ```
+
+**For Admin Access**: Simply add your email to `ADMIN_EMAIL` in `.env` - that's it! See [ADMIN_SETUP_QUICK.md](ADMIN_SETUP_QUICK.md) for details.
+
 2. Install and run:
 ```
 # in server/

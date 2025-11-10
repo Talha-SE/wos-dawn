@@ -13,8 +13,9 @@ function Protected({ children }: { children: JSX.Element }) {
 }
 
 function AdminProtected({ children }: { children: JSX.Element }) {
-  const ok = typeof window !== 'undefined' && localStorage.getItem('admin_session') === '1'
-  return ok ? children : <Navigate to="/login?role=admin" replace />
+  const { token, user } = useAuth()
+  const isAdmin = token && user?.isAdmin
+  return isAdmin ? children : <Navigate to="/login?role=admin" replace />
 }
 
 export default function App() {

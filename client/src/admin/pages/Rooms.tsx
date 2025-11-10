@@ -23,13 +23,11 @@ export default function Rooms() {
   const [editingCode, setEditingCode] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ name: '', state: 0, suspended: false, suspendedUntil: '' })
   const [messageCount, setMessageCount] = useState<{ [key: string]: number }>({})
-  const secret = localStorage.getItem('admin_secret') || ''
 
   async function load() {
-    if (!secret) return
     setLoading(true)
     try {
-      const { data } = await api.get<Room[]>('/admin/rooms', { headers: { 'x-admin-secret': secret } })
+      const { data } = await api.get<Room[]>('/admin/rooms')
       setRooms(Array.isArray(data) ? data : [])
     } catch {
       setRooms([])
@@ -41,7 +39,7 @@ export default function Rooms() {
   async function loadMessageCount(code: string) {
     if (messageCount[code] !== undefined) return
     try {
-      const { data } = await api.get(`/admin/rooms/${code}/messages`, { headers: { 'x-admin-secret': secret } })
+      const { data } = await api.get(`/admin/rooms/${code}/messages`)
       setMessageCount(prev => ({ ...prev, [code]: data.count }))
     } catch {
       setMessageCount(prev => ({ ...prev, [code]: 0 }))
@@ -72,8 +70,7 @@ export default function Rooms() {
           state: editForm.state,
           suspended: editForm.suspended,
           suspendedUntil: editForm.suspendedUntil || null
-        },
-        { headers: { 'x-admin-secret': secret } }
+        }
       )
       await load()
       cancelEdit()
@@ -85,7 +82,7 @@ export default function Rooms() {
   async function suspendRoom(code: string, hours: number) {
     const suspendedUntil = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString()
     try {
-      await api.put(`/admin/rooms/${code}`, { suspended: true, suspendedUntil }, { headers: { 'x-admin-secret': secret } })
+      await api.put(`/admin/rooms/${code}`, { suspended: true, suspendedUntil })
       await load()
     } catch (e: any) {
       alert(e?.response?.data?.message || 'Failed to suspend room')
@@ -94,7 +91,7 @@ export default function Rooms() {
 
   async function unsuspendRoom(code: string) {
     try {
-      await api.put(`/admin/rooms/${code}`, { suspended: false, suspendedUntil: null }, { headers: { 'x-admin-secret': secret } })
+      await api.put(`/admin/rooms/${code}`, { suspended: false, suspendedUntil: null })
       await load()
     } catch (e: any) {
       alert(e?.response?.data?.message || 'Failed to unsuspend room')
@@ -104,7 +101,7 @@ export default function Rooms() {
   async function deleteRoom(code: string) {
     if (!confirm(`Delete room ${code}? This will remove all members and messages.`)) return
     try {
-      await api.delete(`/admin/rooms/${code}`, { headers: { 'x-admin-secret': secret } })
+      await api.delete(`/admin/rooms/${code}`)
       setRooms(prev => prev.filter(r => r.code !== code))
     } catch (e: any) {
       alert(e?.response?.data?.message || 'Failed to delete room')
@@ -113,16 +110,14 @@ export default function Rooms() {
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secret])
+  }, [])
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white">Alliance Room Management</h1>
-        <Button onClick={load} disabled={loading || !secret}>{loading ? 'Loading…' : 'Refresh'}</Button>
+        <Button onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Button>
       </div>
-      {!secret && <div className="text-white/60 text-sm">Set Admin Secret in Settings to manage rooms.</div>}
       <div className="space-y-3">
         {rooms.map((room) => (
           <div key={room.code} className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -228,7 +223,7 @@ export default function Rooms() {
         ))}
         {rooms.length === 0 && (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50">
-            {loading ? 'Loading rooms…' : (secret ? 'No alliance rooms found' : 'Set Admin Secret in Settings')}
+            {loading ? 'Loading rooms…' : 'No alliance rooms found'}
           </div>
         )}
       </div>

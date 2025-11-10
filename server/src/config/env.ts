@@ -7,6 +7,8 @@ const env = {
   JWT_SECRET: process.env.JWT_SECRET || 'change-me',
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
   ADMIN_SECRET: process.env.ADMIN_SECRET || '',
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || '',
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '',
   WOS_PLAYER_URL: process.env.WOS_PLAYER_URL || 'https://wos-giftcode-api.centurygame.com/api/player',
   WOS_GIFT_URL: process.env.WOS_GIFT_URL || 'https://wos-giftcode-api.centurygame.com/api/gift_code',
   ENABLE_CRON: (process.env.ENABLE_CRON || 'true').toLowerCase() !== 'false',

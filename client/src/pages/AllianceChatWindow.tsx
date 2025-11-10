@@ -607,7 +607,7 @@ export default function AllianceChatWindow() {
                         <div className={`relative group rounded-2xl px-4 py-3 ${
                           mine
                             ? 'bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/20 rounded-tr-md'
-                            : 'bg-gradient-to-br from-white/10 to-white/5 text-white/95 border border-white/10 shadow-lg rounded-tl-md'
+                            : 'bg-gradient-to-br from-emerald-500/30 via-cyan-500/20 to-blue-500/25 text-white border border-emerald-400/30 shadow-lg shadow-emerald-500/10 rounded-tl-md'
                         }`}>
                           <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
                             {msg.content}

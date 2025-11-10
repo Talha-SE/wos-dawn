@@ -5,6 +5,7 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import { useAuth } from '../state/AuthContext'
 import TranslateSwitcher from '../components/TranslateSwitcher'
+import api from '../services/api'
 
 export default function Login() {
   const nav = useNavigate()
@@ -15,7 +16,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState<'user' | 'admin'>('user')
-  const [adminCode, setAdminCode] = useState('')
 
   useEffect(() => {
     const url = new URL(window.location.href)
@@ -28,23 +28,22 @@ export default function Login() {
     setError(null)
     setLoading(true)
     try {
-      if (role === 'user') {
-        await login(email, password)
+      await login(email, password)
+      
+      // Check if user is admin after login
+      const { data } = await api.get('/user/me')
+      
+      if (role === 'admin') {
+        if (!data.isAdmin) {
+          throw new Error('You do not have admin privileges')
+        }
+        localStorage.setItem('admin_session', '1')
+        nav('/admin')
+      } else {
         nav('/dashboard')
-        return
       }
-      const required = (import.meta as any).env?.VITE_ADMIN_CODE || '0000'
-      const okCode = /^\d{4}$/.test(adminCode) && adminCode === required
-      if (!okCode) {
-        throw new Error('Invalid admin code')
-      }
-      if (!email || !password) {
-        throw new Error('Email and password required')
-      }
-      localStorage.setItem('admin_session', '1')
-      nav('/admin')
     } catch (e: any) {
-      setError(e?.response?.data?.message || 'Login failed')
+      setError(e?.response?.data?.message || e?.message || 'Login failed')
     } finally { setLoading(false) }
   }
 
@@ -145,24 +144,13 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Admin Code Field */}
+            {/* Admin Notice */}
             {role === 'admin' && (
-              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <label className="text-sm font-medium text-amber-300/90 mb-2 block flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  Admin Code (4 digits)
-                </label>
-                <Input
-                  type="password"
-                  inputMode="numeric"
-                  pattern="[0-9]{4}"
-                  maxLength={4}
-                  value={adminCode}
-                  onChange={(e) => setAdminCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
-                  required
-                  placeholder="••••"
-                  className="bg-amber-500/5 border-amber-500/20 focus:border-amber-500/50 text-center text-lg tracking-widest font-mono"
-                />
+              <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <p className="text-sm text-blue-300/90 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  You will be logged in as an administrator if your account has admin privileges.
+                </p>
               </div>
             )}
 

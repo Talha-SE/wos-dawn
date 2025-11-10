@@ -6,14 +6,15 @@ import { fetchPlayerProfile } from '../services/wos';
 const router = Router();
 
 router.get('/me', requireAuth, async (req: AuthRequest, res) => {
-  const user = await User.findById(req.userId).select('email gameId gameName automationEnabled');
+  const user = await User.findById(req.userId).select('email gameId gameName automationEnabled isAdmin');
   if (!user) return res.status(404).json({ message: 'User not found' });
   res.json({ 
     id: user.id, 
     email: user.email, 
     gameId: user.gameId, 
     gameName: user.gameName, 
-    automationEnabled: user.automationEnabled 
+    automationEnabled: user.automationEnabled,
+    isAdmin: user.isAdmin || false
   });
 });
 

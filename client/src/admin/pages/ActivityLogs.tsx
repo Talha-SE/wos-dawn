@@ -16,14 +16,11 @@ export default function ActivityLogs() {
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(false)
   const [filter, setFilter] = useState<string>('all')
-  const secret = localStorage.getItem('admin_secret') || ''
 
   async function load() {
-    if (!secret) return
     setLoading(true)
     try {
       const { data } = await api.get<ActivityLog[]>('/admin/activity-logs', {
-        headers: { 'x-admin-secret': secret },
         params: { type: filter !== 'all' ? filter : undefined }
       })
       setLogs(Array.isArray(data) ? data : [])
@@ -36,8 +33,7 @@ export default function ActivityLogs() {
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secret, filter])
+  }, [filter])
 
   const activityTypeColors: Record<string, string> = {
     user_register: 'bg-green-600/20 text-green-400 border-green-600/30',
@@ -63,10 +59,8 @@ export default function ActivityLogs() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white">Activity Logs</h1>
-        <Button onClick={load} disabled={loading || !secret}>{loading ? 'Loading…' : 'Refresh'}</Button>
+        <Button onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Button>
       </div>
-
-      {!secret && <div className="text-white/60 text-sm">Set Admin Secret in Settings to view activity logs.</div>}
 
       {/* Filter Options */}
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -147,7 +141,7 @@ export default function ActivityLogs() {
         ))}
         {logs.length === 0 && (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50">
-            {loading ? 'Loading activity logs…' : (secret ? 'No activity logs found' : 'Set Admin Secret in Settings')}
+            {loading ? 'Loading activity logs…' : 'No activity logs found'}
           </div>
         )}
       </div>

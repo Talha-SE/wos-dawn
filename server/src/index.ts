@@ -17,6 +17,13 @@ import { startMessageCleanupCron } from './cron/cleanOldMessages';
 async function bootstrap() {
   await connectDB();
 
+  // Log admin configuration on startup
+  console.log('Admin Configuration:', {
+    ADMIN_EMAIL: env.ADMIN_EMAIL || '(not set)',
+    ADMIN_PASSWORD_SET: !!env.ADMIN_PASSWORD,
+    ADMIN_PASSWORD_LENGTH: env.ADMIN_PASSWORD?.length || 0
+  });
+
   const app = express();
   app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
   app.use(express.json());

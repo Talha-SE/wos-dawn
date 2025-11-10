@@ -1,21 +1,19 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { GiftCode } from '../models/GiftCode';
-import env from '../config/env';
 import { User } from '../models/User';
 import AllianceRoom from '../models/AllianceRoom';
 import AllianceMembership from '../models/AllianceMembership';
 import AllianceMessage from '../models/AllianceMessage';
 import SlotReservation from '../models/SlotReservation';
 import { ActivityLog } from '../models/ActivityLog';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 
 const router = Router();
 
-router.use((req, res, next) => {
-  const secret = req.headers['x-admin-secret'];
-  if (!env.ADMIN_SECRET || secret !== env.ADMIN_SECRET) return res.status(401).json({ message: 'Unauthorized' });
-  next();
-});
+// All admin routes require authentication and admin privileges
+router.use(requireAuth);
+router.use(requireAdmin);
 
 router.get('/gift/codes/all', async (_req, res) => {
   const codes = await GiftCode.find().sort({ createdAt: -1 });
@@ -44,22 +42,51 @@ router.put('/gift/codes/:id', async (req, res) => {
 
 // List users with full details (admin)
 router.get('/users', async (_req, res) => {
-  const users = await User.find()
-    .sort({ createdAt: -1 })
-    .select('email passwordHash gameId gameName automationEnabled createdAt updatedAt suspended suspendedUntil')
-    .lean();
-  res.json(users.map(u => ({
-    _id: u._id,
-    email: u.email,
-    passwordHash: u.passwordHash,
-    gameId: u.gameId || null,
-    gameName: u.gameName || null,
-    automationEnabled: u.automationEnabled || false,
-    suspended: (u as any).suspended || false,
-    suspendedUntil: (u as any).suspendedUntil || null,
-    createdAt: u.createdAt,
-    updatedAt: u.updatedAt
-  })));
+  try {
+    const users = await User.find()
+      .sort({ createdAt: -1 })
+      .select('email passwordHash gameId gameName automationEnabled createdAt updatedAt suspended suspendedUntil isAdmin')
+      .lean();
+    
+    // Import Profile model dynamically
+    const Profile = (await import('../models/Profile')).default;
+    
+    // Fetch profiles for users with gameId
+    const usersWithProfiles = await Promise.all(
+      users.map(async (u) => {
+        let profile = null;
+        if (u.gameId) {
+          profile = await Profile.findOne({ gameId: u.gameId }).lean();
+        }
+        
+        return {
+          _id: u._id,
+          email: u.email,
+          passwordHash: u.passwordHash,
+          gameId: u.gameId || null,
+          gameName: u.gameName || null,
+          automationEnabled: u.automationEnabled || false,
+          suspended: (u as any).suspended || false,
+          suspendedUntil: (u as any).suspendedUntil || null,
+          isAdmin: (u as any).isAdmin || false,
+          createdAt: u.createdAt,
+          updatedAt: u.updatedAt,
+          profile: profile ? {
+            nickname: profile.nickname,
+            kid: profile.kid,
+            stove_lv: profile.stove_lv,
+            stove_lv_content: profile.stove_lv_content,
+            avatar_image: profile.avatar_image,
+            total_recharge_amount: profile.total_recharge_amount
+          } : null
+        };
+      })
+    );
+    
+    res.json(usersWithProfiles);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to fetch users' });
+  }
 });
 
 // Get user statistics

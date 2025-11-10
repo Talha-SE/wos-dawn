@@ -68,6 +68,55 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body as { email: string; password: string };
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
 
+    // Check if this is admin login attempt with credentials from env
+    console.log('Login attempt:', { 
+      email, 
+      envEmail: env.ADMIN_EMAIL, 
+      envPasswordSet: !!env.ADMIN_PASSWORD,
+      emailMatch: email.toLowerCase() === env.ADMIN_EMAIL?.toLowerCase(),
+      passwordMatch: password === env.ADMIN_PASSWORD
+    });
+
+    const isAdminCredentials = 
+      env.ADMIN_EMAIL && 
+      env.ADMIN_PASSWORD && 
+      email.toLowerCase() === env.ADMIN_EMAIL.toLowerCase() && 
+      password === env.ADMIN_PASSWORD;
+
+    console.log('Is admin credentials:', isAdminCredentials);
+
+    if (isAdminCredentials) {
+      // Find or create admin user
+      let user = await User.findOne({ email: env.ADMIN_EMAIL });
+      
+      if (!user) {
+        // Create admin user if doesn't exist
+        const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, 10);
+        user = await User.create({ 
+          email: env.ADMIN_EMAIL, 
+          passwordHash,
+          isAdmin: true 
+        });
+      } else if (!user.isAdmin) {
+        // Promote existing user to admin
+        user.isAdmin = true;
+        await user.save();
+      }
+
+      const token = jwt.sign({ id: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
+      return res.json({ 
+        token, 
+        user: { 
+          id: user.id, 
+          email: user.email, 
+          gameId: user.gameId, 
+          automationEnabled: user.automationEnabled,
+          isAdmin: true
+        } 
+      });
+    }
+
+    // Regular user login
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
@@ -75,7 +124,16 @@ router.post('/login', async (req, res) => {
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
 
     const token = jwt.sign({ id: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, email: user.email, gameId: user.gameId, automationEnabled: user.automationEnabled } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        gameId: user.gameId, 
+        automationEnabled: user.automationEnabled,
+        isAdmin: user.isAdmin || false
+      } 
+    });
   } catch (err) {
     res.status(500).json({ message: 'Login failed' });
   }

@@ -19,16 +19,14 @@ export default function Overview() {
   const [loading, setLoading] = useState(false)
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([])
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([])
-  const secret = localStorage.getItem('admin_secret') || ''
 
   async function load() {
-    if (!secret) return
     setLoading(true)
     try {
       const [statsRes, usersRes, roomsRes] = await Promise.all([
-        api.get<Stats>('/admin/stats', { headers: { 'x-admin-secret': secret } }),
-        api.get<any[]>('/admin/users', { headers: { 'x-admin-secret': secret } }),
-        api.get<any[]>('/admin/rooms', { headers: { 'x-admin-secret': secret } })
+        api.get<Stats>('/admin/stats'),
+        api.get<any[]>('/admin/users'),
+        api.get<any[]>('/admin/rooms')
       ])
       
       setStats(statsRes.data)
@@ -44,8 +42,7 @@ export default function Overview() {
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secret])
+  }, [])
 
   const calculatePercentage = (value: number, total: number) => {
     if (!total) return 0
@@ -60,7 +57,7 @@ export default function Overview() {
           <h1 className="text-3xl font-bold text-white">Dashboard Overview</h1>
           <p className="text-white/60 text-sm mt-1">Welcome to WOS-DAWN Admin Panel</p>
         </div>
-        <Button onClick={load} disabled={loading || !secret} variant="secondary">
+        <Button onClick={load} disabled={loading} variant="secondary">
           {loading ? (
             <span className="flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -75,15 +72,13 @@ export default function Overview() {
         </Button>
       </div>
 
-      {!secret && (
+      {!stats && !loading && (
         <div className="rounded-2xl border border-yellow-600/30 bg-yellow-600/10 p-5 flex items-start gap-4">
           <Shield className="text-yellow-400 shrink-0" size={24} />
           <div>
-            <h3 className="text-yellow-400 font-semibold mb-1">Admin Authentication Required</h3>
+            <h3 className="text-yellow-400 font-semibold mb-1">Unable to Load Data</h3>
             <p className="text-yellow-300/80 text-sm">
-              Please set your Admin Secret in the{' '}
-              <Link to="/admin/settings" className="underline font-medium">Settings page</Link>
-              {' '}to view dashboard statistics and manage the system.
+              There was an issue loading the dashboard data. Please check your connection and try again.
             </p>
           </div>
         </div>

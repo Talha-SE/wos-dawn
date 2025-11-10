@@ -25,13 +25,11 @@ export default function Slots() {
   const [states, setStates] = useState<StateGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedState, setExpandedState] = useState<string | null>(null)
-  const secret = localStorage.getItem('admin_secret') || ''
 
   async function load() {
-    if (!secret) return
     setLoading(true)
     try {
-      const { data } = await api.get<StateGroup[]>('/admin/slots', { headers: { 'x-admin-secret': secret } })
+      const { data} = await api.get<StateGroup[]>('/admin/slots')
       setStates(Array.isArray(data) ? data : [])
     } catch {
       setStates([])
@@ -41,7 +39,7 @@ export default function Slots() {
   async function deleteReservation(id: string, state: string) {
     if (!confirm('Delete this slot reservation? The slot will become available again.')) return
     try {
-      await api.delete(`/admin/slots/${id}`, { headers: { 'x-admin-secret': secret } })
+      await api.delete(`/admin/slots/${id}`)
       setStates(prev => prev.map(s => 
         s.state === state 
           ? { ...s, reservations: s.reservations.filter(r => r._id !== id), count: s.count - 1 }
@@ -57,7 +55,7 @@ export default function Slots() {
     try {
       const stateReservations = states.find(s => s.state === state)?.reservations || []
       for (const reservation of stateReservations) {
-        await api.delete(`/admin/slots/${reservation._id}`, { headers: { 'x-admin-secret': secret } })
+        await api.delete(`/admin/slots/${reservation._id}`)
       }
       setStates(prev => prev.filter(s => s.state !== state))
       alert(`Deleted all reservations for State ${state}`)
@@ -68,16 +66,14 @@ export default function Slots() {
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secret])
+  }, [])
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white">SVS Slot Reservations</h1>
-        <Button onClick={load} disabled={loading || !secret}>{loading ? 'Loading…' : 'Refresh'}</Button>
+        <Button onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Button>
       </div>
-      {!secret && <div className="text-white/60 text-sm">Set Admin Secret in Settings to view slot reservations.</div>}
       <div className="space-y-3">
         {states.map((stateGroup) => (
           <div key={stateGroup.state} className="rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -137,7 +133,7 @@ export default function Slots() {
         ))}
         {states.length === 0 && (
           <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50">
-            {loading ? 'Loading slot reservations…' : (secret ? 'No slot reservations found' : 'Set Admin Secret in Settings')}
+            {loading ? 'Loading slot reservations…' : 'No slot reservations found'}
           </div>
         )}
       </div>

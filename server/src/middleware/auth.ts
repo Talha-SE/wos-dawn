@@ -49,3 +49,23 @@ export async function checkSuspended(req: AuthRequest, res: Response, next: Next
     return res.status(500).json({ message: err.message || 'Failed to check suspension status' });
   }
 }
+
+export async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    if (!req.userId) return res.status(401).json({ message: 'Unauthorized' });
+    
+    const user = await User.findById(req.userId).select('isAdmin email');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    // Check if user is admin OR if their email matches ADMIN_EMAIL from env
+    const isAdminEmail = env.ADMIN_EMAIL && user.email.toLowerCase() === env.ADMIN_EMAIL.toLowerCase();
+    
+    if (!user.isAdmin && !isAdminEmail) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    
+    next();
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message || 'Failed to verify admin status' });
+  }
+}
