@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import Button from '../components/Button'
 import Input from '../components/Input'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
 
 export default function ProfilePage() {
   const { user, setUser } = useAuth()
-  const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState(user?.email || '')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -129,20 +127,6 @@ export default function ProfilePage() {
           <div>
             <label className="text-xs font-medium text-white/70 mb-2 block">Email Address</label>
             <Input value={user?.email || ''} disabled className="bg-white/5 border-white/10 opacity-60" />
-          </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-medium text-white/70 mb-2 block">Display Name</label>
-              <Input 
-                value={displayName} 
-                onChange={(e) => setDisplayName(e.target.value)} 
-                placeholder="Enter your name" 
-                className="bg-white/5 border-white/10 focus:border-blue-500/50"
-              />
-            </div>
-            <div className="flex items-end">
-              <Button variant="ghost" disabled className="w-full">Update Profile</Button>
-            </div>
           </div>
         </div>
       </section>

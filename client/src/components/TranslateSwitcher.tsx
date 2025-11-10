@@ -270,18 +270,12 @@ export default function TranslateSwitcher() {
     // Remove translation classes from body
     document.body.classList.remove('translated-ltr', 'translated-rtl')
     document.documentElement.classList.remove('translated-ltr', 'translated-rtl')
-    // Hint to Google to keep page un-translated going forward
-    document.documentElement.classList.add('notranslate')
-    document.body.classList.add('notranslate')
     
     // Remove any Google Translate injected elements
     const gtElements = document.querySelectorAll('[id^="goog-gt-"], .goog-te-banner-frame, .skiptranslate')
     gtElements.forEach(el => {
       if (el.parentNode) el.parentNode.removeChild(el)
     })
-    // Also clear inline styles Google may have applied to html/body
-    try { (document.documentElement as HTMLElement).style.transform = '' } catch {}
-    try { (document.body as HTMLElement).style.transform = '' } catch {}
   }
 
   async function detectAndApply() {
@@ -359,21 +353,13 @@ export default function TranslateSwitcher() {
 
   useEffect(() => {
     if (ready && autoEnabled) detectAndApply()
-    if (ready && !autoEnabled) {
-      clearAllTranslationData()
-      try { localStorage.setItem('wos_manual_lang', NONE_OPTION.code) } catch {}
-      setCurrent(NONE_OPTION)
-    }
+    if (ready && !autoEnabled) restoreManual()
   }, [ready, autoEnabled])
 
   useEffect(() => {
     function onPageShow() {
       if (ready && autoEnabled) detectAndApply()
-      if (ready && !autoEnabled) {
-        clearAllTranslationData()
-        try { localStorage.setItem('wos_manual_lang', NONE_OPTION.code) } catch {}
-        setCurrent(NONE_OPTION)
-      }
+      if (ready && !autoEnabled) restoreManual()
     }
     window.addEventListener('pageshow', onPageShow)
     return () => window.removeEventListener('pageshow', onPageShow)
@@ -405,12 +391,10 @@ export default function TranslateSwitcher() {
       if (source === 'manual') {
         try { localStorage.setItem('wos_manual_lang', NONE_OPTION.code) } catch {}
       }
+      // Force reload to ensure clean state without any translations
+      setTimeout(() => window.location.reload(), 100)
       return
     }
-    
-    // Enable translation by removing notranslate flags if present
-    document.documentElement.classList.remove('notranslate')
-    document.body.classList.remove('notranslate')
     
     if (fadeTimeout) window.clearTimeout(fadeTimeout)
     document.documentElement.classList.add('translate-fading')
@@ -439,6 +423,10 @@ export default function TranslateSwitcher() {
       setCurrent(NONE_OPTION)
       setOpen(false)
       setQuery('')
+      // Force page reload to clear any translation artifacts
+      if (document.body.classList.contains('translated-ltr') || document.body.classList.contains('translated-rtl')) {
+        setTimeout(() => window.location.reload(), 100)
+      }
       return
     }
     const lang = LANGUAGE_OPTIONS.find((l) => l.code === saved) || NONE_OPTION
@@ -469,6 +457,8 @@ export default function TranslateSwitcher() {
               // No manual selection, go back to none (no translation)
               clearAllTranslationData()
               setCurrent(NONE_OPTION)
+              // Reload to ensure clean state
+              setTimeout(() => window.location.reload(), 100)
             } else {
               // Restore the manual selection
               restoreManual()
@@ -527,6 +517,8 @@ export default function TranslateSwitcher() {
                         setCurrent(NONE_OPTION)
                         setOpen(false)
                         setQuery('')
+                        // Reload to ensure completely clean state
+                        setTimeout(() => window.location.reload(), 100)
                       } else {
                         applyLanguage(lang, 'manual')
                       }
