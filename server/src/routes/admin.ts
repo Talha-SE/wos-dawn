@@ -3,6 +3,12 @@ import bcrypt from 'bcryptjs';
 import { GiftCode } from '../models/GiftCode';
 import { User } from '../models/User';
 import AllianceRoom from '../models/AllianceRoom';
+import { 
+  createSuspensionNotification, 
+  createRoomSuspensionNotification,
+  createOwnershipTransferNotification,
+  createOwnershipRemovedNotification
+} from '../services/notifications';
 import AllianceMembership from '../models/AllianceMembership';
 import AllianceMessage from '../models/AllianceMessage';
 import SlotReservation from '../models/SlotReservation';
@@ -116,7 +122,12 @@ router.get('/stats', async (_req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, password, gameId, gameName, automationEnabled, suspended, suspendedUntil } = req.body;
+    const { email, password, gameId, gameName, automationEnabled, suspended, suspendedUntil, suspensionReason } = req.body;
+    
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    const wasSuspended = user.suspended;
     
     const update: any = {};
     if (email !== undefined) update.email = email;
@@ -128,11 +139,22 @@ router.put('/users/:id', async (req, res) => {
     if (typeof automationEnabled === 'boolean') update.automationEnabled = automationEnabled;
     if (typeof suspended === 'boolean') update.suspended = suspended;
     if (suspendedUntil !== undefined) update.suspendedUntil = suspendedUntil ? new Date(suspendedUntil) : null;
+    if (suspensionReason !== undefined) update.suspensionReason = suspensionReason;
 
     const updated = await User.findByIdAndUpdate(id, { $set: update }, { new: true })
-      .select('email gameId gameName automationEnabled suspended suspendedUntil createdAt updatedAt');
+      .select('email gameId gameName automationEnabled suspended suspendedUntil suspensionReason createdAt updatedAt');
     
     if (!updated) return res.status(404).json({ message: 'User not found' });
+    
+    // Create notification if user is being suspended
+    if (!wasSuspended && suspended) {
+      await createSuspensionNotification(
+        (updated._id as any).toString(),
+        suspensionReason || 'Violation of terms of service',
+        suspendedUntil ? new Date(suspendedUntil) : undefined
+      );
+    }
+    
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to update user' });
@@ -200,13 +222,19 @@ router.get('/rooms', async (_req, res) => {
 router.put('/rooms/:code', async (req, res) => {
   try {
     const code = String(req.params.code);
-    const { name, state, suspended, suspendedUntil } = req.body;
+    const { name, state, suspended, suspendedUntil, suspensionReason } = req.body;
+    
+    const room = await AllianceRoom.findOne({ code });
+    if (!room) return res.status(404).json({ message: 'Room not found' });
+    
+    const wasSuspended = room.suspended;
     
     const update: any = {};
     if (name !== undefined) update.name = name;
     if (state !== undefined) update.state = state;
     if (typeof suspended === 'boolean') update.suspended = suspended;
     if (suspendedUntil !== undefined) update.suspendedUntil = suspendedUntil ? new Date(suspendedUntil) : null;
+    if (suspensionReason !== undefined) update.suspensionReason = suspensionReason;
 
     const updated = await AllianceRoom.findOneAndUpdate(
       { code },
@@ -215,6 +243,23 @@ router.put('/rooms/:code', async (req, res) => {
     ).populate('createdBy', 'email');
     
     if (!updated) return res.status(404).json({ message: 'Room not found' });
+    
+    // Create notifications for all room members if room is being suspended
+    if (!wasSuspended && suspended) {
+      const memberships = await AllianceMembership.find({ roomCode: code }).populate('userId');
+      const userIds = memberships.map((m: any) => m.userId._id).filter(Boolean);
+      
+      if (userIds.length > 0) {
+        await createRoomSuspensionNotification(
+          userIds,
+          code,
+          updated.name,
+          suspensionReason || 'Violation of community guidelines',
+          suspendedUntil ? new Date(suspendedUntil) : undefined
+        );
+      }
+    }
+    
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to update room' });
@@ -245,6 +290,97 @@ router.get('/rooms/:code/messages', async (req, res) => {
     res.json({ count });
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to get message count' });
+  }
+});
+
+// Transfer room ownership (admin)
+router.put('/rooms/:code/transfer-owner', async (req, res) => {
+  try {
+    const code = String(req.params.code);
+    const { newOwnerEmail } = req.body;
+    
+    if (!newOwnerEmail) {
+      return res.status(400).json({ message: 'New owner email is required' });
+    }
+    
+    // Find the room
+    const room = await AllianceRoom.findOne({ code }).populate('createdBy');
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found' });
+    }
+    
+    // Find the new owner
+    const newOwner = await User.findOne({ email: newOwnerEmail });
+    if (!newOwner) {
+      return res.status(404).json({ message: 'New owner not found with this email' });
+    }
+    
+    // Check if new owner is already a member of this room
+    let membership = await AllianceMembership.findOne({ roomCode: code, userId: newOwner._id });
+    if (!membership) {
+      // Add new owner as member first
+      membership = new AllianceMembership({
+        userId: newOwner._id,
+        roomCode: code,
+        role: 'owner',
+        joinedAt: new Date()
+      });
+    } else {
+      // Update existing membership to owner
+      membership.role = 'owner';
+    }
+    await membership.save();
+    
+    // Update old owner's membership to member (if they're not the same user)
+    const oldOwnerId = (room.createdBy as any)._id || room.createdBy;
+    const oldOwnerEmail = (room.createdBy as any).email || 'Previous owner';
+    
+    if (oldOwnerId.toString() !== newOwner._id!.toString()) {
+      await AllianceMembership.findOneAndUpdate(
+        { roomCode: code, userId: oldOwnerId },
+        { $set: { role: 'member' } }
+      );
+    }
+    
+    // Update room's createdBy field
+    room.createdBy = newOwner._id! as any;
+    await room.save();
+    
+    // Create notifications
+    await createOwnershipTransferNotification(
+      newOwner._id!.toString(),
+      oldOwnerEmail,
+      code,
+      room.name
+    );
+    
+    if (oldOwnerId.toString() !== newOwner._id!.toString()) {
+      await createOwnershipRemovedNotification(
+        oldOwnerId.toString(),
+        newOwnerEmail,
+        code,
+        room.name
+      );
+    }
+    
+    // Log the activity
+    await ActivityLog.create({
+      userId: (req as AuthRequest).userId,
+      action: 'room_owner_transfer',
+      targetType: 'room',
+      targetId: code,
+      details: `Transferred ownership of room "${room.name}" from ${oldOwnerEmail} to ${newOwnerEmail}`,
+      ipAddress: req.ip
+    });
+    
+    const updatedRoom = await AllianceRoom.findOne({ code }).populate('createdBy', 'email');
+    res.json({ 
+      message: 'Room ownership transferred successfully',
+      room: updatedRoom
+    });
+  } catch (err: any) {
+    console.error('Failed to transfer room ownership:', err);
+    res.status(500).json({ message: err.message || 'Failed to transfer room ownership' });
   }
 });
 

@@ -37,7 +37,8 @@ export default function Users() {
     gameName: '',
     automationEnabled: false,
     suspended: false,
-    suspendedUntil: ''
+    suspendedUntil: '',
+    suspensionReason: ''
   })
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState<{ [key: string]: boolean }>({})
@@ -68,13 +69,14 @@ export default function Users() {
       gameName: user.gameName || '',
       automationEnabled: user.automationEnabled,
       suspended: user.suspended,
-      suspendedUntil: user.suspendedUntil ? user.suspendedUntil.split('T')[0] : ''
+      suspendedUntil: user.suspendedUntil ? user.suspendedUntil.split('T')[0] : '',
+      suspensionReason: (user as any).suspensionReason || ''
     })
   }
 
   function cancelEdit() {
     setEditingId(null)
-    setEditForm({ email: '', password: '', gameId: '', gameName: '', automationEnabled: false, suspended: false, suspendedUntil: '' })
+    setEditForm({ email: '', password: '', gameId: '', gameName: '', automationEnabled: false, suspended: false, suspendedUntil: '', suspensionReason: '' })
   }
 
   async function saveEdit(userId: string) {
@@ -85,7 +87,8 @@ export default function Users() {
         gameName: editForm.gameName,
         automationEnabled: editForm.automationEnabled,
         suspended: editForm.suspended,
-        suspendedUntil: editForm.suspendedUntil || null
+        suspendedUntil: editForm.suspendedUntil || null,
+        suspensionReason: editForm.suspensionReason || ''
       }
       if (editForm.password) payload.password = editForm.password
       await api.put(`/admin/users/${userId}`, payload)
@@ -125,7 +128,16 @@ export default function Users() {
     }
   }
 
-  const filtered = rows.filter(r => r.email.toLowerCase().includes(q.toLowerCase()))
+  const filtered = rows.filter(r => {
+    const query = q.toLowerCase();
+    return (
+      r.email.toLowerCase().includes(query) ||
+      (r.gameId && r.gameId.toLowerCase().includes(query)) ||
+      (r.gameName && r.gameName.toLowerCase().includes(query)) ||
+      (r.profile?.nickname && r.profile.nickname.toLowerCase().includes(query)) ||
+      (r.profile?.kid && r.profile.kid.toString().includes(query))
+    );
+  })
 
   return (
     <div className="space-y-4">
@@ -134,7 +146,7 @@ export default function Users() {
         <Button onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Refresh'}</Button>
       </div>
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <Input placeholder="Search by email..." value={q} onChange={(e) => setQ(e.target.value)} className="bg-transparent border-none text-white" />
+        <Input placeholder="Search by email, game ID, game name, nickname, or player ID..." value={q} onChange={(e) => setQ(e.target.value)} className="bg-transparent border-none text-white" />
       </div>
       <div className="space-y-3">
         {filtered.map((user) => (
@@ -163,6 +175,15 @@ export default function Users() {
                     <label className="text-xs text-white/60 mb-1 block">Suspend Until</label>
                     <Input type="date" value={editForm.suspendedUntil} onChange={(e) => setEditForm({ ...editForm, suspendedUntil: e.target.value })} className="bg-white/10 border-white/20 text-white" />
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/60 mb-1 block">Suspension Reason</label>
+                  <Input 
+                    value={editForm.suspensionReason} 
+                    onChange={(e) => setEditForm({ ...editForm, suspensionReason: e.target.value })} 
+                    className="bg-white/10 border-white/20 text-white" 
+                    placeholder="Reason for suspension..."
+                  />
                 </div>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-sm text-white cursor-pointer">

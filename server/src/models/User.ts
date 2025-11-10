@@ -9,6 +9,7 @@ export interface IUser extends Document {
   redeemedCodes: Types.ObjectId[];
   suspended: boolean;
   suspendedUntil?: Date;
+  suspensionReason?: string;
   isAdmin: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -18,12 +19,13 @@ const UserSchema = new Schema<IUser>(
   {
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
-    gameId: { type: String },
-    gameName: { type: String },
+    gameId: { type: String, index: true }, // Added index for search
+    gameName: { type: String, index: true }, // Added index for search
     automationEnabled: { type: Boolean, default: false },
     redeemedCodes: [{ type: Schema.Types.ObjectId, ref: 'GiftCode', default: [] }],
-    suspended: { type: Boolean, default: false },
+    suspended: { type: Boolean, default: false, index: true },
     suspendedUntil: { type: Date },
+    suspensionReason: { type: String, maxlength: 500 },
     isAdmin: { type: Boolean, default: false }
   },
   { timestamps: true }

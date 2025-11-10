@@ -143,77 +143,6 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           />
 
           {collapsed ? (
-            <NavItem
-              to="/dashboard/redeem/private"
-              active={pathname.includes('/redeem')}
-              icon={<Gift size={18} />}
-              collapsed={collapsed}
-              label="Redeem"
-              onNavigate={onMobileClose}
-            />
-          ) : (
-            <div className="flex flex-col gap-1 mt-4">
-              <div className="px-3 py-1.5 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Redeem</div>
-              <button
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${pathname.includes('/redeem') ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white border border-blue-500/20 shadow-lg shadow-blue-500/5' : 'text-white/80 hover:text-white hover:bg-white/5'} justify-between`}
-                onClick={() => setOpenRedeem((v) => !v)}
-                aria-expanded={openRedeem}
-              >
-                <span className="flex items-center gap-3">
-                  <span className="grid place-items-center"><Gift size={18} /></span>
-                  <span className="font-medium">Redeem Gift</span>
-                </span>
-                <span className={`transition-transform duration-200 ${openRedeem ? 'rotate-180' : ''}`}><ChevronDown size={14} /></span>
-              </button>
-              {openRedeem && (
-                <div className="pl-6 flex flex-col gap-0.5 mt-1 text-white">
-                  <NavItem
-                    to="/dashboard/redeem/private"
-                    active={pathname.includes('/redeem/private')}
-                    icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
-                    collapsed={false}
-                    label="Private Redeem"
-                    onNavigate={onMobileClose}
-                  />
-                  <NavItem
-                    to="/dashboard/redeem/alliance"
-                    active={pathname.includes('/redeem/alliance')}
-                    icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
-                    collapsed={false}
-                    label="Alliance Redeem"
-                    onNavigate={onMobileClose}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {!collapsed && <div className="px-3 py-1.5 mt-4 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Utilities</div>}
-          <NavItem
-            to="/dashboard/svs"
-            active={pathname.includes('/svs')}
-            icon={<Shield size={18} />}
-            collapsed={collapsed}
-            label="SVS"
-            onNavigate={onMobileClose}
-          />
-          <NavItem
-            to="/dashboard/chat-ai"
-            active={pathname.includes('/chat-ai')}
-            icon={<MessageSquare size={18} />}
-            collapsed={collapsed}
-            label="Chat AI"
-            onNavigate={onMobileClose}
-          />
-          <NavItem
-            to="/dashboard/contact-admin"
-            active={pathname.includes('/contact-admin')}
-            icon={<Headphones size={18} />}
-            collapsed={collapsed}
-            label="Contact Admin"
-            onNavigate={onMobileClose}
-          />
-          {collapsed ? (
             <>
               <NavItem
                 to="/dashboard/alliance-chat"
@@ -282,6 +211,78 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                       onNavigate={onMobileClose}
                     />
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!collapsed && <div className="px-3 py-1.5 mt-4 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Utilities</div>}
+          <NavItem
+            to="/dashboard/svs"
+            active={pathname.includes('/svs')}
+            icon={<Shield size={18} />}
+            collapsed={collapsed}
+            label="SVS"
+            onNavigate={onMobileClose}
+          />
+          <NavItem
+            to="/dashboard/chat-ai"
+            active={pathname.includes('/chat-ai')}
+            icon={<MessageSquare size={18} />}
+            collapsed={collapsed}
+            label="Chat AI"
+            onNavigate={onMobileClose}
+          />
+          <NavItem
+            to="/dashboard/contact-admin"
+            active={pathname.includes('/contact-admin')}
+            icon={<Headphones size={18} />}
+            collapsed={collapsed}
+            label="Contact Admin"
+            onNavigate={onMobileClose}
+          />
+          
+          {collapsed ? (
+            <NavItem
+              to="/dashboard/redeem/private"
+              active={pathname.includes('/redeem')}
+              icon={<Gift size={18} />}
+              collapsed={collapsed}
+              label="Redeem"
+              onNavigate={onMobileClose}
+            />
+          ) : (
+            <div className="flex flex-col gap-1 mt-4">
+              <div className="px-3 py-1.5 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Redeem</div>
+              <button
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${pathname.includes('/redeem') ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white border border-blue-500/20 shadow-lg shadow-blue-500/5' : 'text-white/80 hover:text-white hover:bg-white/5'} justify-between`}
+                onClick={() => setOpenRedeem((v) => !v)}
+                aria-expanded={openRedeem}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="grid place-items-center"><Gift size={18} /></span>
+                  <span className="font-medium">Redeem Gift</span>
+                </span>
+                <span className={`transition-transform duration-200 ${openRedeem ? 'rotate-180' : ''}`}><ChevronDown size={14} /></span>
+              </button>
+              {openRedeem && (
+                <div className="pl-6 flex flex-col gap-0.5 mt-1 text-white">
+                  <NavItem
+                    to="/dashboard/redeem/private"
+                    active={pathname.includes('/redeem/private')}
+                    icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
+                    collapsed={false}
+                    label="Private Redeem"
+                    onNavigate={onMobileClose}
+                  />
+                  <NavItem
+                    to="/dashboard/redeem/alliance"
+                    active={pathname.includes('/redeem/alliance')}
+                    icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
+                    collapsed={false}
+                    label="Alliance Redeem"
+                    onNavigate={onMobileClose}
+                  />
                 </div>
               )}
             </div>

@@ -21,7 +21,9 @@ export default function Rooms() {
   const [loading, setLoading] = useState(false)
   const [expandedCode, setExpandedCode] = useState<string | null>(null)
   const [editingCode, setEditingCode] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ name: '', state: 0, suspended: false, suspendedUntil: '' })
+  const [editForm, setEditForm] = useState({ name: '', state: 0, suspended: false, suspendedUntil: '', suspensionReason: '' })
+  const [transferOwnerEmail, setTransferOwnerEmail] = useState('')
+  const [transferringCode, setTransferringCode] = useState<string | null>(null)
   const [messageCount, setMessageCount] = useState<{ [key: string]: number }>({})
 
   async function load() {
@@ -52,13 +54,14 @@ export default function Rooms() {
       name: room.name,
       state: room.state,
       suspended: room.suspended || false,
-      suspendedUntil: room.suspendedUntil ? room.suspendedUntil.split('T')[0] : ''
+      suspendedUntil: room.suspendedUntil ? room.suspendedUntil.split('T')[0] : '',
+      suspensionReason: (room as any).suspensionReason || ''
     })
   }
 
   function cancelEdit() {
     setEditingCode(null)
-    setEditForm({ name: '', state: 0, suspended: false, suspendedUntil: '' })
+    setEditForm({ name: '', state: 0, suspended: false, suspendedUntil: '', suspensionReason: '' })
   }
 
   async function saveEdit(code: string) {
@@ -69,13 +72,37 @@ export default function Rooms() {
           name: editForm.name,
           state: editForm.state,
           suspended: editForm.suspended,
-          suspendedUntil: editForm.suspendedUntil || null
+          suspendedUntil: editForm.suspendedUntil || null,
+          suspensionReason: editForm.suspensionReason || ''
         }
       )
       await load()
       cancelEdit()
     } catch (e: any) {
       alert(e?.response?.data?.message || 'Failed to update room')
+    }
+  }
+
+  async function transferOwner(code: string) {
+    if (!transferOwnerEmail || !transferOwnerEmail.trim()) {
+      alert('Please enter an email address');
+      return;
+    }
+    
+    if (!confirm(`Transfer ownership of this room to ${transferOwnerEmail}?`)) return;
+    
+    setTransferringCode(code);
+    try {
+      await api.put(`/admin/rooms/${code}/transfer-owner`, {
+        newOwnerEmail: transferOwnerEmail.trim()
+      });
+      await load();
+      setTransferOwnerEmail('');
+      alert('Room ownership transferred successfully');
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'Failed to transfer ownership');
+    } finally {
+      setTransferringCode(null);
     }
   }
 
@@ -137,6 +164,15 @@ export default function Rooms() {
                     <label className="text-xs text-white/60 mb-1 block">Suspend Until</label>
                     <Input type="date" value={editForm.suspendedUntil} onChange={(e) => setEditForm({ ...editForm, suspendedUntil: e.target.value })} className="bg-white/10 border-white/20 text-white" />
                   </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/60 mb-1 block">Suspension Reason</label>
+                  <Input 
+                    value={editForm.suspensionReason} 
+                    onChange={(e) => setEditForm({ ...editForm, suspensionReason: e.target.value })} 
+                    className="bg-white/10 border-white/20 text-white" 
+                    placeholder="Reason for suspension..."
+                  />
                 </div>
                 <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
                   <input type="checkbox" checked={editForm.suspended} onChange={(e) => setEditForm({ ...editForm, suspended: e.target.checked })} className="rounded" />
@@ -204,16 +240,40 @@ export default function Rooms() {
                         </div>
                       </div>
                     )}
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
-                      {room.suspended ? (
-                        <Button variant="secondary" size="sm" onClick={() => unsuspendRoom(room.code)}>Unsuspend Room</Button>
-                      ) : (
-                        <>
-                          <Button variant="danger" size="sm" onClick={() => suspendRoom(room.code, 24)}>Suspend 24h</Button>
-                          <Button variant="danger" size="sm" onClick={() => suspendRoom(room.code, 72)}>Suspend 3d</Button>
-                          <Button variant="danger" size="sm" onClick={() => suspendRoom(room.code, 168)}>Suspend 7d</Button>
-                        </>
-                      )}
+                    <div className="space-y-3 pt-2 border-t border-white/10">
+                      <div>
+                        <div className="text-sm font-semibold text-white/80 mb-2">Transfer Ownership</div>
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="New owner email..."
+                            value={transferOwnerEmail}
+                            onChange={(e) => setTransferOwnerEmail(e.target.value)}
+                            className="bg-white/10 border-white/20 text-white flex-1"
+                          />
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={() => transferOwner(room.code)}
+                            disabled={transferringCode === room.code}
+                          >
+                            {transferringCode === room.code ? 'Transferring...' : 'Transfer'}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-white/50 mt-1">
+                          Transfer ownership to another user. They will become the room owner.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {room.suspended ? (
+                          <Button variant="secondary" size="sm" onClick={() => unsuspendRoom(room.code)}>Unsuspend Room</Button>
+                        ) : (
+                          <>
+                            <Button variant="danger" size="sm" onClick={() => suspendRoom(room.code, 24)}>Suspend 24h</Button>
+                            <Button variant="danger" size="sm" onClick={() => suspendRoom(room.code, 72)}>Suspend 3d</Button>
+                            <Button variant="danger" size="sm" onClick={() => suspendRoom(room.code, 168)}>Suspend 7d</Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

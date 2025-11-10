@@ -103,6 +103,39 @@ export default function AllianceChatWindow() {
   const notificationSoundRef = useRef<HTMLAudioElement | null>(null)
   const [sseConnected, setSseConnected] = useState(false)
 
+  // Generate consistent color for each user based on their email
+  function getUserColor(email: string): string {
+    const colors = [
+      'text-purple-400',
+      'text-pink-400',
+      'text-rose-400',
+      'text-orange-400',
+      'text-amber-400',
+      'text-yellow-400',
+      'text-lime-400',
+      'text-green-400',
+      'text-emerald-400',
+      'text-teal-400',
+      'text-cyan-400',
+      'text-sky-400',
+      'text-blue-400',
+      'text-indigo-400',
+      'text-violet-400',
+      'text-fuchsia-400'
+    ]
+    
+    // Generate consistent hash from email
+    let hash = 0
+    for (let i = 0; i < email.length; i++) {
+      hash = email.charCodeAt(i) + ((hash << 5) - hash)
+      hash = hash & hash // Convert to 32-bit integer
+    }
+    
+    // Use hash to pick color consistently
+    const index = Math.abs(hash) % colors.length
+    return colors[index]
+  }
+
   function scrollToBottom() {
     if (!listRef.current) return
     // Use rAF to wait for layout; do twice to be safe after images/fonts
@@ -487,50 +520,53 @@ export default function AllianceChatWindow() {
         <audio ref={notificationSoundRef} className="hidden" preload="auto">
           <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
         </audio>
-        <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] pb-20 md:pb-24">
-          {/* Header Bar */}
-          <div className="flex-none mb-3 md:mb-4">
-            <div className="flex items-center justify-between gap-3 px-4 md:px-6">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
+        {/* Fixed full-screen container that prevents content from hiding */}
+        <div className="fixed inset-0 z-30 flex flex-col bg-transparent md:relative md:inset-auto md:z-auto md:bg-transparent md:h-[calc(100vh-160px)]">
+          {/* Sticky Header Bar - Always visible at top */}
+          <div className="flex-none bg-slate-900/95 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
+            <div className="flex items-center justify-between gap-3 px-3 py-3 md:px-6 md:py-4">
+              <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
                 <button
                   onClick={() => {
                     setJoined(null)
                     nav('/dashboard/alliance-chat')
                   }}
-                  className="flex-none p-2 rounded-full hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+                  className="flex-none p-1.5 md:p-2 rounded-full hover:bg-white/10 transition-colors text-white/70 hover:text-white active:scale-95"
                   title="Leave room"
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-sm md:text-base font-semibold text-white truncate">{joined.name}</h2>
                     {/* Connection Status Indicator */}
-                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${sseConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${sseConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                       <div className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
-                      <span className="hidden md:inline">{sseConnected ? 'Live' : 'Reconnecting...'}</span>
+                      <span className="hidden sm:inline">{sseConnected ? 'Live' : 'Reconnecting...'}</span>
+                      <span className="inline sm:hidden">{sseConnected ? 'Live' : '...'}</span>
                     </div>
                   </div>
-                  <p className="text-xs text-white/50">State {joined.state} • {joined.code}</p>
+                  <p className="text-xs text-white/50 truncate">State {joined.state} • {joined.code}</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowMobileDetails((v) => !v)}
-                className="flex-none px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-white/80 hover:bg-white/10 transition-all active:scale-95"
+                className="flex-none px-2.5 md:px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-white/80 hover:bg-white/10 transition-all active:scale-95"
               >
                 {showMobileDetails ? 'Hide' : 'Info'}
               </button>
             </div>
 
-            {/* Info Panel (collapsible) */}
+
+            {/* Info Panel (collapsible) - Inside sticky header */}
             {showMobileDetails && (
-              <div className="mt-3 px-4 md:px-6 animate-in slide-in-from-top duration-200">
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
+              <div className="px-3 pb-3 md:px-6 md:pb-4 animate-in slide-in-from-top duration-200">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3 md:p-4 space-y-3">
                   <div className="text-xs font-semibold text-white/80">Room Access</div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-slate-950/50 rounded-lg p-2 border border-white/5">
                       <div className="text-[10px] text-white/40 mb-1">Code</div>
-                      <div className="font-mono text-xs text-white">{joined.code}</div>
+                      <div className="font-mono text-xs text-white truncate">{joined.code}</div>
                     </div>
                     <div className="bg-slate-950/50 rounded-lg p-2 border border-white/5">
                       <div className="text-[10px] text-white/40 mb-1">Password</div>
@@ -571,14 +607,15 @@ export default function AllianceChatWindow() {
             )}
           </div>
 
-          {/* Messages Area */}
+          {/* Messages Area - Flexible scroll area with bottom padding for input */}
           <div className="relative flex-1 overflow-hidden">
             <div
               ref={listRef}
-              className="h-full overflow-y-auto overscroll-contain px-4 md:px-6 space-y-3 scrollbar-elegant pb-4"
+              className="h-full overflow-y-auto overscroll-contain px-3 md:px-6 py-4 space-y-4 scrollbar-elegant pb-24 md:pb-28"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
+                <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center px-4">
                   <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4">
                     <Send size={24} className="text-white/30" />
                   </div>
@@ -588,17 +625,37 @@ export default function AllianceChatWindow() {
                   </p>
                 </div>
               ) : (
-                messages.map((msg) => {
+                messages.map((msg, idx) => {
                   const mine = msg.senderEmail === user?.email
                   const canDelete = !msg._id.startsWith('temp-') && (mine || joined?.isOwner)
                   const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  const prev = idx > 0 ? messages[idx - 1] : null
+                  const sameAsPrev = !!(prev && prev.senderEmail === msg.senderEmail)
+                  const showSenderLabel = !mine && !sameAsPrev
                   
                   return (
-                    <div key={msg._id} className={`flex ${mine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}>
-                      <div className="max-w-[85%] md:max-w-[60%] lg:max-w-[50%]">
-                        {/* Sender info for received messages */}
-                        {!mine && (
-                          <div className="text-[11px] font-medium text-blue-400/70 mb-1.5 px-4">
+                    <div key={msg._id} className={`flex gap-2 ${mine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}>
+                      {/* Delete button on LEFT for sent messages (mine) */}
+                      {mine && canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => deleteMessage(msg)}
+                          disabled={deletingId === msg._id}
+                          className="flex-none self-end mb-1 w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-white/40 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 active:scale-95 grid place-items-center"
+                          title="Delete message"
+                        >
+                          {deletingId === msg._id ? (
+                            <div className="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
+                          ) : (
+                            <X size={14} />
+                          )}
+                        </button>
+                      )}
+                      
+                      <div className={`group max-w-[75%] sm:max-w-[65%] md:max-w-[55%] lg:max-w-[45%]`}>
+                        {/* Sender label only at start of a block from same sender */}
+                        {showSenderLabel && (
+                          <div className={`text-xs font-bold mb-1.5 px-1 drop-shadow-lg ${getUserColor(msg.senderEmail)}`}>
                             {msg.senderEmail.split('@')[0]}
                           </div>
                         )}
@@ -606,33 +663,36 @@ export default function AllianceChatWindow() {
                         {/* Message bubble */}
                         <div className={`relative group rounded-2xl px-4 py-3 ${
                           mine
-                            ? 'bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/20 rounded-tr-md'
-                            : 'bg-gradient-to-br from-emerald-500/30 via-cyan-500/20 to-blue-500/25 text-white border border-emerald-400/30 shadow-lg shadow-emerald-500/10 rounded-tl-md'
+                            ? 'bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/30 rounded-tr-md'
+                            : 'bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 text-white border border-white/15 backdrop-blur-md shadow-lg shadow-violet-500/20 rounded-tl-md'
                         }`}>
-                          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                            {msg.content}
-                          </div>
-                          
-                          <div className={`flex items-center gap-2 mt-2 ${mine ? 'justify-end' : 'justify-start'}`}>
-                            <span className={`text-[11px] ${mine ? 'text-white/70' : 'text-white/50'}`}>
+                          <div className="flex items-end justify-between gap-3">
+                            <div className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words flex-1">
+                              {msg.content}
+                            </div>
+                            <span className={`text-[10px] whitespace-nowrap self-end flex-none ${mine ? 'text-purple-200/70' : 'text-gray-400'}`}>
                               {time}
                             </span>
-                            
-                            {canDelete && (
-                              <button
-                                type="button"
-                                onClick={() => deleteMessage(msg)}
-                                disabled={deletingId === msg._id}
-                                className={`text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded ${
-                                  mine ? 'text-white/60 hover:text-white hover:bg-white/10' : 'text-white/40 hover:text-red-400 hover:bg-red-400/10'
-                                } transition disabled:opacity-40 opacity-0 group-hover:opacity-100`}
-                              >
-                                {deletingId === msg._id ? '•••' : 'Delete'}
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Delete button on RIGHT for received messages */}
+                      {!mine && canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => deleteMessage(msg)}
+                          disabled={deletingId === msg._id}
+                          className="flex-none self-end mb-1 w-8 h-8 rounded-full bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-white/40 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 active:scale-95 grid place-items-center"
+                          title="Delete message"
+                        >
+                          {deletingId === msg._id ? (
+                            <div className="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
+                          ) : (
+                            <X size={14} />
+                          )}
+                        </button>
+                      )}
                     </div>
                   )
                 })
@@ -641,27 +701,27 @@ export default function AllianceChatWindow() {
             </div>
           </div>
 
-          {/* Floating Typing Bar */}
-          <div className="fixed left-0 right-0 bottom-0 flex justify-center px-4 md:px-6 pb-4 md:pb-6 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent pt-6 pointer-events-none z-40">
+          {/* Fixed Typing Bar - Positioned at bottom without hiding sidebar */}
+          <div className="absolute bottom-0 left-0 right-0 flex justify-center px-3 md:px-6 pb-safe pb-3 md:pb-4 bg-gradient-to-t from-slate-950 via-slate-950/98 to-transparent pt-4 pointer-events-none z-40">
             <div className="pointer-events-auto w-full max-w-4xl">
-              <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-2xl border border-white/10 shadow-2xl px-3 md:px-4 py-3">
+              <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-gradient-to-r from-slate-900/98 via-slate-800/98 to-slate-900/98 backdrop-blur-xl border border-white/20 shadow-2xl px-2.5 md:px-4 py-2 md:py-2.5">
                 {/* Voice Button */}
                 <button
                   type="button"
                   onClick={toggleRecord}
                   disabled={sending || transcribing}
-                  className={`flex-none h-11 w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
+                  className={`flex-none h-10 w-10 md:h-11 md:w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
                     recording
-                      ? 'bg-red-500 text-white shadow-red-500/50 scale-110'
+                      ? 'bg-red-500 text-white shadow-red-500/50 scale-105'
                       : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/15 active:scale-95'
                   }`}
                   title={recording ? 'Stop recording' : 'Voice message'}
                 >
-                  <Mic size={18} className={recording ? 'animate-pulse' : ''} />
+                  <Mic size={17} className={recording ? 'animate-pulse' : ''} />
                 </button>
 
                 {/* Input Field */}
-                <div className="flex-1 relative">
+                <div className="flex-1 relative min-w-0">
                   <Input
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
@@ -672,7 +732,7 @@ export default function AllianceChatWindow() {
                     autoCorrect="on"
                     autoCapitalize="sentences"
                     inputMode="text"
-                    className="border-none bg-transparent text-white placeholder:text-white/40 focus:ring-0 h-11"
+                    className="border-none bg-transparent text-white placeholder:text-white/40 focus:ring-0 h-10 md:h-11 text-sm md:text-base px-2"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
@@ -681,7 +741,7 @@ export default function AllianceChatWindow() {
                     }}
                   />
                   {transcribing && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2">
                       <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
                     </div>
                   )}
@@ -691,16 +751,16 @@ export default function AllianceChatWindow() {
                 <button
                   onClick={sendMessage}
                   disabled={!messageText.trim() || sending}
-                  className={`flex-none h-11 w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
+                  className={`flex-none h-10 w-10 md:h-11 md:w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
                     messageText.trim() && !sending
-                      ? 'bg-gradient-to-br from-blue-600 via-blue-500 to-purple-600 text-white shadow-blue-500/40 hover:shadow-blue-500/60 hover:scale-105 active:scale-95'
+                      ? 'bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white shadow-purple-500/50 hover:shadow-purple-500/70 hover:scale-105 active:scale-95'
                       : 'bg-white/5 text-white/30 cursor-not-allowed'
                   }`}
                 >
                   {sending ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <Send size={18} />
+                    <Send size={17} />
                   )}
                 </button>
               </div>

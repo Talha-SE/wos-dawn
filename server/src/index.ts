@@ -11,6 +11,7 @@ import aiRoutes from './routes/ai';
 import allianceRoutes from './routes/alliance';
 import slotsRoutes from './routes/slots';
 import supportRoutes from './routes/support';
+import notificationRoutes from './routes/notification';
 import { startAutoRedeemCron } from './cron/autoRedeem';
 import { startSlotResetCron } from './cron/resetSlots';
 import { startMessageCleanupCron } from './cron/cleanOldMessages';
@@ -39,6 +40,7 @@ async function bootstrap() {
   app.use('/api/alliance', allianceRoutes);
   app.use('/api/slots', slotsRoutes);
   app.use('/api/support', supportRoutes);
+  app.use('/api', notificationRoutes);
 
   const server = app.listen(env.PORT, () => {
     console.log(`Server running on http://localhost:${env.PORT}`);
