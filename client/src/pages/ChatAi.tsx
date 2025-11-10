@@ -296,11 +296,11 @@ export default function ChatAi() {
   }
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] mt-2 md:mt-6">
+    <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)]">
       <div className="relative flex-1 overflow-hidden">
         <div
           ref={listRef}
-          className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-5 scrollbar-elegant"
+          className="h-full overflow-y-auto overscroll-contain px-4 md:px-6 space-y-5 scrollbar-elegant"
           style={{ paddingBottom: `calc(20px + ${composerHeight}px)` }}
         >
           {messages.length === 0 && (
