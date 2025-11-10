@@ -120,7 +120,10 @@ export default function Svs() {
   }
 
   const slots = useMemo(() => Array.from({ length: 48 }, (_, i) => i), [])
-  const userReservation = useMemo(() => items.find(item => item.reservedBy === user?.id), [items, user?.id])
+  const userReservation = useMemo(() => {
+    const userId = user?.id || (user as any)?._id
+    return userId ? items.find(item => item.reservedBy === String(userId)) : undefined
+  }, [items, user])
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 space-y-5">
