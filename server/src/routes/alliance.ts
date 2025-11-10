@@ -28,6 +28,35 @@ router.get('/my-rooms', requireAuth, async (req: AuthRequest, res) => {
   }
 })
 
+// List rooms with last message timestamp to support unread indicators
+router.get('/my-rooms/summary', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const memberships = await AllianceMembership.find({ userId: req.userId }).lean()
+    const codes = memberships.map((m) => m.roomCode)
+    if (codes.length === 0) return res.json([])
+
+    const rooms = await AllianceRoom.find({ code: { $in: codes } })
+      .select('code name state -_id')
+      .lean()
+
+    const lastByRoom = await AllianceMessage.aggregate([
+      { $match: { roomCode: { $in: codes } } },
+      { $sort: { createdAt: -1 } },
+      { $group: { _id: '$roomCode', lastMessageAt: { $first: '$createdAt' } } }
+    ])
+
+    const lastMap = new Map<string, Date>(lastByRoom.map((d: any) => [String(d._id), d.lastMessageAt]))
+
+    const order = new Map(codes.map((c, i) => [c, i]))
+    rooms.sort((a: any, b: any) => (order.get(a.code)! - order.get(b.code)!))
+
+    const out = rooms.map((r: any) => ({ ...r, lastMessageAt: lastMap.get(r.code) || null }))
+    res.json(out)
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to list room summaries' })
+  }
+})
+
 // Room meta (name/state) with isOwner and isMember flags
 router.get('/rooms/:code/meta', requireAuth, async (req: AuthRequest, res) => {
   try {

@@ -10,6 +10,7 @@ export default function Signup() {
   const nav = useNavigate()
   const { signup } = useAuth()
   const [email, setEmail] = useState('')
+  const [gameName, setGameName] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,7 +25,7 @@ export default function Signup() {
     }
     setLoading(true)
     try {
-      await signup(email, password, confirm)
+      await signup(email, password, confirm, gameName)
       nav('/dashboard')
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Signup failed')
@@ -46,6 +47,10 @@ export default function Signup() {
           <div>
             <label className="text-sm text-white/70">Email</label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div>
+            <label className="text-sm text-white/70">Name</label>
+            <Input value={gameName} onChange={(e) => setGameName(e.target.value)} placeholder="Your in-game name" />
           </div>
           <div>
             <label className="text-sm text-white/70">Password</label>

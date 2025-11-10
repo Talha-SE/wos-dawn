@@ -320,6 +320,7 @@ export default function AllianceChatWindow() {
       setShowDelete(false)
       setCurrentPassword(joinPassword)
       await loadMessages(data.code)
+      try { localStorage.setItem(`wos_room_seen_${data.code}`, String(Date.now())); window.dispatchEvent(new Event('alliance:rooms-refresh')) } catch {}
       attachStream(data.code)
       nav(`/dashboard/alliance-chat/${data.code}`)
     } finally { setJoining(false) }
@@ -347,6 +348,7 @@ export default function AllianceChatWindow() {
       const { data } = await api.get<Message[]>(`/alliance/rooms/${code}/messages`)
       setMessages(data)
       scrollToBottom()
+      try { localStorage.setItem(`wos_room_seen_${code}`, String(Date.now())); window.dispatchEvent(new Event('alliance:rooms-refresh')) } catch {}
     } catch {
       setMessages([])
     }
@@ -506,6 +508,9 @@ export default function AllianceChatWindow() {
   // Keep list pinned to bottom when messages length changes
   useLayoutEffect(() => {
     scrollToBottom()
+    if (joined?.code && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      try { localStorage.setItem(`wos_room_seen_${joined.code}`, String(Date.now())); window.dispatchEvent(new Event('alliance:rooms-refresh')) } catch {}
+    }
   }, [messages.length, joined?.code])
 
   useEffect(() => {

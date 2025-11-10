@@ -39,7 +39,7 @@ const router = Router();
 
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, passwordConfirmation } = req.body as { email: string; password: string; passwordConfirmation?: string };
+    const { email, password, passwordConfirmation, gameName, name } = req.body as { email: string; password: string; passwordConfirmation?: string; gameName?: string; name?: string };
     if (!email || !password) return res.status(400).json({ message: 'Email and password required' });
 
     if (!validateEmailAddress(email)) {
@@ -54,10 +54,11 @@ router.post('/signup', async (req, res) => {
     if (existing) return res.status(409).json({ message: 'Email already in use' });
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, passwordHash });
+    const initialGameName = (typeof gameName === 'string' && gameName.trim()) ? gameName.trim() : (typeof name === 'string' && name.trim() ? name.trim() : undefined);
+    const user = await User.create({ email, passwordHash, ...(initialGameName ? { gameName: initialGameName } : {}) });
 
     const token = jwt.sign({ id: user.id }, env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, email: user.email } });
+    res.json({ token, user: { id: user.id, email: user.email, gameName: user.gameName } });
   } catch (err) {
     res.status(500).json({ message: 'Signup failed' });
   }

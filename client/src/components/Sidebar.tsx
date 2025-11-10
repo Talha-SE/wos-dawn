@@ -6,6 +6,7 @@ import logo from '../assets/wos-dawn.png'
 import { useAuth } from '../state/AuthContext'
 
 type JoinedRoom = { code: string; name: string; state: number }
+type RoomSummary = { code: string; name: string; state: number; lastMessageAt: string | null }
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }) {
   const { pathname } = useLocation()
@@ -14,9 +15,25 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const [openRedeem, setOpenRedeem] = useState(true)
   const [openJoined, setOpenJoined] = useState(true)
   const [rooms, setRooms] = useState<JoinedRoom[]>([])
+  const [summaries, setSummaries] = useState<Record<string, string | null>>({})
   const [loadingRooms, setLoadingRooms] = useState(false)
   const [roomsError, setRoomsError] = useState<string | null>(null)
   const fetchSeq = useRef(0)
+
+  function getLastSeen(code: string): number {
+    try { return Number(localStorage.getItem(`wos_room_seen_${code}`) || 0) } catch { return 0 }
+  }
+
+  function markSeen(code: string) {
+    try { localStorage.setItem(`wos_room_seen_${code}`, String(Date.now())) } catch {}
+    window.dispatchEvent(new Event('alliance:rooms-refresh'))
+  }
+
+  function hasUnread(code: string): boolean {
+    const last = summaries[code] ? new Date(String(summaries[code]!)).getTime() : 0
+    const seen = getLastSeen(code)
+    return last > 0 && last > seen
+  }
 
   function handleLogout() {
     logout()
@@ -37,9 +54,15 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     if (!silent) setLoadingRooms(true)
 
     try {
-      const { data } = await api.get<JoinedRoom[]>('/alliance/my-rooms')
+      const [{ data: list }, { data: summary }] = await Promise.all([
+        api.get<JoinedRoom[]>('/alliance/my-rooms'),
+        api.get<RoomSummary[]>('/alliance/my-rooms/summary').catch(() => ({ data: [] as RoomSummary[] }))
+      ])
       if (fetchSeq.current !== seq) return
-      setRooms(data || [])
+      setRooms(list || [])
+      const nextMap: Record<string, string | null> = {}
+      ;(summary || []).forEach((s) => { nextMap[s.code] = s.lastMessageAt ? String(s.lastMessageAt) : null })
+      setSummaries(nextMap)
       setRoomsError(null)
     } catch (err: any) {
       if (fetchSeq.current !== seq) return
@@ -200,17 +223,30 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                       {rooms.length === 0 ? 'Tap to retry loading rooms' : 'Reload rooms'}
                     </button>
                   )}
-                  {rooms.map((r) => (
-                    <NavItem
-                      key={r.code}
-                      to={`/dashboard/alliance-chat/${r.code}`}
-                      active={pathname === `/dashboard/alliance-chat/${r.code}`}
-                      icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
-                      collapsed={false}
-                      label={`${r.name} • ${r.state}`}
-                      onNavigate={onMobileClose}
-                    />
-                  ))}
+                  {rooms.map((r) => {
+                    const unread = hasUnread(r.code)
+                    return (
+                      <NavItem
+                        key={r.code}
+                        to={`/dashboard/alliance-chat/${r.code}`}
+                        active={pathname === `/dashboard/alliance-chat/${r.code}`}
+                        icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
+                        collapsed={false}
+                        title={`${r.name} • ${r.state}`}
+                        label={
+                          <span className="flex items-center justify-between w-full gap-2">
+                            <span className="truncate">{`${r.name} • ${r.state}`}</span>
+                            {unread && (
+                              <span className="ml-2 inline-flex items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-[10px] px-1.5 py-0.5 leading-none">
+                                New
+                              </span>
+                            )}
+                          </span>
+                        }
+                        onNavigate={() => { markSeen(r.code); if (onMobileClose) onMobileClose() }}
+                      />
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -316,14 +352,14 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   )
 }
 
-function NavItem({ to, active, icon, label, collapsed, onNavigate }: { to: string; active: boolean; icon: React.ReactNode; label: string; collapsed: boolean; onNavigate?: () => void }) {
+function NavItem({ to, active, icon, label, collapsed, onNavigate, title }: { to: string; active: boolean; icon: React.ReactNode; label: React.ReactNode; collapsed: boolean; onNavigate?: () => void; title?: string }) {
   if (collapsed) {
     return (
       <Link
         to={to}
         className={`grid place-items-center w-12 h-12 rounded-xl transition-all ${active ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/15 text-white border border-blue-500/30 shadow-lg shadow-blue-500/10' : 'text-white/70 hover:text-white hover:bg-white/10 border border-white/10'}`}
         onClick={onNavigate}
-        title={label}
+        title={title || (typeof label === 'string' ? label : undefined)}
       >
         {icon}
       </Link>

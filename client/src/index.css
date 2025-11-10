@@ -20,6 +20,12 @@ body {
   @apply antialiased text-white;
 }
 
+html, body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
 #root { min-height: 100vh; }
 
 .app-shell {
@@ -39,6 +45,16 @@ body {
   filter: blur(120px);
   opacity: 0.65;
   pointer-events: none;
+}
+
+/* Prefer reduced motion: minimize transitions/animations for accessibility and smoother feel */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .app-shell::before {
