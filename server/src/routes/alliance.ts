@@ -196,7 +196,7 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
       content: trimmed
     })
 
-    broadcastMessage(code, {
+    const messagePayload = {
       type: 'message',
       payload: {
         _id: doc._id,
@@ -206,7 +206,10 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
         content: doc.content,
         createdAt: doc.createdAt
       }
-    })
+    }
+    
+    console.log(`Broadcasting message to room ${code}, connected clients:`, roomStreams.get(code)?.size || 0)
+    broadcastMessage(code, messagePayload)
 
     res.status(201).json({ ok: true })
   } catch (err: any) {
@@ -250,10 +253,14 @@ router.get('/rooms/:code/stream', requireAuth, async (req: AuthRequest, res) => 
   const code = String(req.params.code)
   const membership = await AllianceMembership.findOne({ roomCode: code, userId: req.userId })
   if (!membership) {
+    console.log(`SSE: User ${req.userId} not a member of room ${code}`)
     res.writeHead(401)
     res.end()
     return
   }
+  
+  console.log(`SSE: Client connecting to room ${code}, user ${req.userId}`)
+  
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -265,6 +272,8 @@ router.get('/rooms/:code/stream', requireAuth, async (req: AuthRequest, res) => 
   const client: Client = { res }
   if (!roomStreams.has(code)) roomStreams.set(code, new Set())
   roomStreams.get(code)!.add(client)
+  
+  console.log(`SSE: Room ${code} now has ${roomStreams.get(code)!.size} connected client(s)`)
 
   // Send heartbeat every 30 seconds to keep connection alive
   const heartbeat = setInterval(() => {
@@ -276,15 +285,26 @@ router.get('/rooms/:code/stream', requireAuth, async (req: AuthRequest, res) => 
   }, 30000)
 
   req.on('close', () => {
+    console.log(`SSE: Client disconnected from room ${code}`)
     clearInterval(heartbeat)
     roomStreams.get(code)?.delete(client)
-    if (roomStreams.get(code)?.size === 0) roomStreams.delete(code)
+    if (roomStreams.get(code)?.size === 0) {
+      roomStreams.delete(code)
+      console.log(`SSE: Room ${code} closed (no more clients)`)
+    } else {
+      console.log(`SSE: Room ${code} now has ${roomStreams.get(code)!.size} connected client(s)`)
+    }
   })
 })
 
 function broadcastMessage(roomCode: string, data: unknown) {
   const clients = roomStreams.get(roomCode)
-  if (!clients) return
+  if (!clients) {
+    console.log(`No clients connected to room ${roomCode}`)
+    return
+  }
+  
+  console.log(`Broadcasting to ${clients.size} client(s) in room ${roomCode}`)
   const payload = `data: ${JSON.stringify(data)}\n\n`
   const deadClients: Client[] = []
   
@@ -293,6 +313,8 @@ function broadcastMessage(roomCode: string, data: unknown) {
       const written = client.res.write(payload)
       if (!written) {
         console.log('Client buffer full, message queued')
+      } else {
+        console.log('Message sent to client successfully')
       }
     } catch (err) {
       console.error('Failed to write to SSE client:', err)
@@ -303,9 +325,11 @@ function broadcastMessage(roomCode: string, data: unknown) {
   // Remove dead clients
   for (const deadClient of deadClients) {
     clients.delete(deadClient)
+    console.log('Removed dead client')
   }
   
   if (clients.size === 0) {
     roomStreams.delete(roomCode)
+    console.log(`Room ${roomCode} has no more clients, removing`)
   }
 }
