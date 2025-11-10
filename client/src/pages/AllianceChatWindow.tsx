@@ -441,10 +441,10 @@ export default function AllianceChatWindow() {
         <audio ref={notificationSoundRef} className="hidden" preload="auto">
           <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
         </audio>
-        <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] mt-2 md:mt-6 pb-20 md:pb-24">
+        <div className="relative flex flex-col h-[calc(100vh-140px)] md:h-[calc(100vh-160px)] pb-20 md:pb-24">
           {/* Header Bar */}
           <div className="flex-none mb-3 md:mb-4">
-            <div className="flex items-center justify-between gap-3 px-3 md:px-8">
+            <div className="flex items-center justify-between gap-3 px-4 md:px-6">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <button
                   onClick={() => {
@@ -471,7 +471,7 @@ export default function AllianceChatWindow() {
 
             {/* Info Panel (collapsible) */}
             {showMobileDetails && (
-              <div className="mt-3 px-3 md:px-8 animate-in slide-in-from-top duration-200">
+              <div className="mt-3 px-4 md:px-6 animate-in slide-in-from-top duration-200">
                 <div className="rounded-2xl bg-white/5 border border-white/10 p-4 space-y-3">
                   <div className="text-xs font-semibold text-white/80">Room Access</div>
                   <div className="grid grid-cols-2 gap-2">
@@ -522,7 +522,7 @@ export default function AllianceChatWindow() {
           <div className="relative flex-1 overflow-hidden">
             <div
               ref={listRef}
-              className="h-full overflow-y-auto overscroll-contain px-3 md:px-8 space-y-3 scrollbar-elegant pb-4"
+              className="h-full overflow-y-auto overscroll-contain px-4 md:px-6 space-y-3 scrollbar-elegant pb-4"
             >
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
@@ -660,7 +660,7 @@ export default function AllianceChatWindow() {
 
   // Room selection/creation view (normal dashboard layout)
   return (
-    <div className="flex flex-col gap-4 min-h-[calc(100vh-140px)] md:min-h-[calc(100vh-160px)]">
+    <div className="flex flex-col gap-4 min-h-[calc(100vh-140px)] md:min-h-[calc(100vh-160px)] px-3 md:px-8">
       <audio ref={notificationSoundRef} className="hidden" preload="auto">
         <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
       </audio>

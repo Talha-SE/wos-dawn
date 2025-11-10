@@ -130,10 +130,10 @@ export default function Dashboard() {
           onMobileClose={() => setMobileOpen(false)}
         />
         <main
-          className={`flex-1 px-3 md:px-8 pb-10 transition-all duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-64'}`}
+          className={`flex-1 ${location.pathname.includes('/alliance-chat') ? '' : 'px-3 md:px-8'} pb-10 transition-all duration-300 ml-0 ${collapsed ? 'md:ml-20' : 'md:ml-64'}`}
           style={mainStyle}
         >
-          <div className="space-y-6 animate-fadeUp" style={{ animationDelay: '0.08s' }}>
+          <div className={location.pathname.includes('/alliance-chat') ? '' : 'space-y-6 animate-fadeUp'} style={{ animationDelay: '0.08s' }}>
             <Routes>
               <Route path="/" element={<Navigate to="profile" replace />} />
               <Route path="profile" element={<ProfilePage />} />
