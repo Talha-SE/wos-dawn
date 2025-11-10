@@ -4,6 +4,7 @@ import { Gift, User, Menu, Shield, MessageSquare, ChevronDown, X, LogOut, Headph
 import api from '../services/api'
 import logo from '../assets/wos-dawn.png'
 import { useAuth } from '../state/AuthContext'
+import notificationMp3 from '../assets/room-message-notification.mp3'
 
 type JoinedRoom = { code: string; name: string; state: number }
 type RoomSummary = { code: string; name: string; state: number; lastMessageAt: string | null }
@@ -12,6 +13,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const { pathname } = useLocation()
   const nav = useNavigate()
   const { token, refreshMe, logout } = useAuth()
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const lastSoundAtRef = useRef<number>(0)
   const [openRedeem, setOpenRedeem] = useState(true)
   const [openJoined, setOpenJoined] = useState(true)
   const [rooms, setRooms] = useState<JoinedRoom[]>([])
@@ -33,6 +36,48 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     const last = summaries[code] ? new Date(String(summaries[code]!)).getTime() : 0
     const seen = getLastSeen(code)
     return last > 0 && last > seen
+  }
+
+  function getLastNotified(code: string): number {
+    try { return Number(localStorage.getItem(`wos_room_notified_${code}`) || 0) } catch { return 0 }
+  }
+
+  function setLastNotified(code: string, ts: number) {
+    try { localStorage.setItem(`wos_room_notified_${code}`, String(ts)) } catch {}
+  }
+
+  async function pollSummariesAndNotify() {
+    if (!token) return
+    try {
+      const { data } = await api.get<RoomSummary[]>('/alliance/my-rooms/summary')
+      const nextMap: Record<string, string | null> = {}
+      ;(data || []).forEach((s) => { nextMap[s.code] = s.lastMessageAt ? String(s.lastMessageAt) : null })
+      setSummaries(nextMap)
+      // decide notifications
+      const nowPath = pathname
+      for (const s of (data || [])) {
+        if (!s.lastMessageAt) continue
+        const lastTs = new Date(s.lastMessageAt).getTime()
+        const seenTs = getLastSeen(s.code)
+        const notifiedTs = getLastNotified(s.code)
+        const isCurrentRoom = nowPath === `/dashboard/alliance-chat/${s.code}`
+        if (lastTs > 0 && lastTs > seenTs && lastTs > notifiedTs && !isCurrentRoom) {
+          // throttle global sound
+          const now = Date.now()
+          if (now - lastSoundAtRef.current > 800) {
+            lastSoundAtRef.current = now
+            try {
+              if (audioRef.current) {
+                audioRef.current.currentTime = 0
+                audioRef.current.volume = 0.8
+                await audioRef.current.play().catch(() => undefined)
+              }
+            } catch {}
+          }
+          setLastNotified(s.code, lastTs)
+        }
+      }
+    } catch {}
   }
 
   function handleLogout() {
@@ -100,7 +145,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     loadRooms()
     const onFocus = () => loadRooms({ silent: true })
     window.addEventListener('focus', onFocus)
-    return () => { window.removeEventListener('focus', onFocus) }
+    // start lightweight polling for cross-room notifications
+    const id = window.setInterval(() => { pollSummariesAndNotify() }, 10000)
+    const onVis = () => { if (document.visibilityState === 'visible') { pollSummariesAndNotify() } }
+    document.addEventListener('visibilitychange', onVis)
+    return () => { window.removeEventListener('focus', onFocus); window.clearInterval(id); document.removeEventListener('visibilitychange', onVis) }
   }, [token, loadRooms])
 
   useEffect(() => {
@@ -112,6 +161,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   return (
     <aside className={`fixed left-0 top-0 bottom-0 z-40 md:z-20 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-white/10 shadow-2xl transition-all duration-300 ${collapsed ? 'md:w-20' : 'md:w-64'} w-64 transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
       <div className="h-full flex flex-col overflow-hidden">
+        <audio ref={audioRef} className="hidden" preload="auto" src={notificationMp3} />
         {/* Header */}
         <div className="flex-none px-4 py-5 border-b border-white/10 bg-gradient-to-r from-slate-800/50 to-slate-900/50">
           <div className="flex items-center justify-between">
