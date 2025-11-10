@@ -36,6 +36,12 @@ router.get('/rooms/:code/meta', requireAuth, async (req: AuthRequest, res) => {
     if (!room) return res.status(404).json({ message: 'Room not found' })
     const isOwner = String(room.createdBy) === String(req.userId)
     const isMember = !!(await AllianceMembership.findOne({ roomCode: code, userId: req.userId }))
+
+    // Only the owner or a member can see room meta; others must join first.
+    if (!isOwner && !isMember) {
+      return res.status(403).json({ message: 'Join the room first' })
+    }
+
     res.json({ code: room.code, name: room.name, state: room.state, isOwner, isMember })
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to load room meta' })

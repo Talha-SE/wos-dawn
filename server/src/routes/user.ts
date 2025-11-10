@@ -8,7 +8,13 @@ const router = Router();
 router.get('/me', requireAuth, async (req: AuthRequest, res) => {
   const user = await User.findById(req.userId).select('email gameId gameName automationEnabled');
   if (!user) return res.status(404).json({ message: 'User not found' });
-  res.json(user);
+  res.json({ 
+    id: user.id, 
+    email: user.email, 
+    gameId: user.gameId, 
+    gameName: user.gameName, 
+    automationEnabled: user.automationEnabled 
+  });
 });
 
 router.put('/me/game', requireAuth, async (req: AuthRequest, res) => {

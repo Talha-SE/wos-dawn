@@ -226,7 +226,9 @@ export default function Svs() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {slots.map((i) => {
               const taken = map.get(i)
-              const isMySlot = taken && taken.reservedBy === user?.id
+              // Fix: Handle both _id and id properties from different API responses
+              const userId = user?.id || (user as any)?._id
+              const isMySlot = taken && userId && taken.reservedBy === String(userId)
               return (
               <div key={i} className="relative group/card">
                 <button
