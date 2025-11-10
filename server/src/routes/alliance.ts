@@ -257,15 +257,26 @@ router.get('/rooms/:code/stream', requireAuth, async (req: AuthRequest, res) => 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    Connection: 'keep-alive'
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no' // Disable buffering for nginx
   })
-  res.write('\n')
+  res.write(':ok\n\n') // Send initial comment to establish connection
 
   const client: Client = { res }
   if (!roomStreams.has(code)) roomStreams.set(code, new Set())
   roomStreams.get(code)!.add(client)
 
+  // Send heartbeat every 30 seconds to keep connection alive
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(':heartbeat\n\n')
+    } catch (err) {
+      clearInterval(heartbeat)
+    }
+  }, 30000)
+
   req.on('close', () => {
+    clearInterval(heartbeat)
     roomStreams.get(code)?.delete(client)
     if (roomStreams.get(code)?.size === 0) roomStreams.delete(code)
   })
@@ -275,7 +286,26 @@ function broadcastMessage(roomCode: string, data: unknown) {
   const clients = roomStreams.get(roomCode)
   if (!clients) return
   const payload = `data: ${JSON.stringify(data)}\n\n`
+  const deadClients: Client[] = []
+  
   for (const client of clients) {
-    client.res.write(payload)
+    try {
+      const written = client.res.write(payload)
+      if (!written) {
+        console.log('Client buffer full, message queued')
+      }
+    } catch (err) {
+      console.error('Failed to write to SSE client:', err)
+      deadClients.push(client)
+    }
+  }
+  
+  // Remove dead clients
+  for (const deadClient of deadClients) {
+    clients.delete(deadClient)
+  }
+  
+  if (clients.size === 0) {
+    roomStreams.delete(roomCode)
   }
 }

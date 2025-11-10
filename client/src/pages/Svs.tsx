@@ -304,42 +304,40 @@ export default function Svs() {
 
       {/* Confirmation Modal */}
       {confirmOpen && pendingIndex !== null && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 z-50 grid place-items-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmOpen(false)} />
-            <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/95 p-4 md:p-5 shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center gap-2 md:gap-3 mb-2 text-white">
-                <ShieldCheck size={16} className="text-primary md:hidden" />
-                <ShieldCheck size={18} className="text-primary hidden md:block" />
-                <h4 className="font-display text-base md:text-lg">Confirm Reservation</h4>
+            <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl">
+              <div className="flex items-center gap-3 mb-2 text-white">
+                <ShieldCheck size={18} className="text-primary" />
+                <h4 className="font-display text-lg">Confirm Reservation</h4>
               </div>
-              <p className="text-white/70 text-xs md:text-sm leading-relaxed">
+              <p className="text-white/70 text-sm leading-relaxed">
                 Reserve <span className="font-semibold text-white">{slotLabel(pendingIndex)}</span> for
                 <span className="font-semibold text-white"> {allianceName || '—'}</span> in
                 <span className="font-semibold text-white"> state {stateName || '—'}</span>?
               </p>
-              <div className="mt-3 md:mt-4 space-y-2">
-                <label className="text-[10px] md:text-xs uppercase tracking-wider text-white/50 block">Duration (days, min 30)</label>
-                <div className="rounded-xl md:rounded-2xl border border-white/10 bg-white/5 px-3 py-2 md:py-2.5 text-white/80 flex items-center gap-2 focus-within:border-primary/50 focus-within:bg-white/10 transition-colors">
-                  <CalendarDays size={14} className="text-primary/70 md:hidden" />
-                  <CalendarDays size={16} className="text-primary/70 hidden md:block" />
-                  <Input type="number" min={30} value={durationInput} onChange={(e) => setDurationInput(e.target.value)} placeholder="30" className="bg-transparent border-none focus:ring-0 px-0 w-full text-sm" />
+              <div className="mt-4 space-y-2">
+                <label className="text-xs uppercase tracking-wider text-white/50 block">Duration (days, min 30)</label>
+                <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 text-white/80 flex items-center gap-2 focus-within:border-primary/50 focus-within:bg-white/10 transition-colors">
+                  <CalendarDays size={16} className="text-primary/70" />
+                  <Input type="number" min={30} value={durationInput} onChange={(e) => setDurationInput(e.target.value)} placeholder="30" className="bg-transparent border-none focus:ring-0 px-0 w-full" />
                 </div>
                 {Number(durationInput) < 30 && (
-                  <div className="text-[10px] md:text-[11px] text-red-300">Minimum duration is 30 days.</div>
+                  <div className="text-[11px] text-red-300">Minimum duration is 30 days.</div>
                 )}
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 md:gap-3">
+              <div className="mt-4 grid grid-cols-2 gap-3">
                 <Button
                   variant="ghost"
                   onClick={() => { setConfirmOpen(false); setPendingIndex(null) }}
-                  className="h-10 md:h-11 rounded-xl text-sm"
+                  className="h-11 rounded-xl"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={() => { if (pendingIndex !== null) reserve(pendingIndex) }}
                   disabled={reserving !== null || !(Number(durationInput) >= 30)}
-                  className="h-10 md:h-11 rounded-xl text-sm"
+                  className="h-11 rounded-xl"
                 >
                   {reserving !== null ? 'Reserving…' : 'Confirm'}
                 </Button>
@@ -350,64 +348,62 @@ export default function Svs() {
 
       {/* Cancel Confirmation Modal */}
       {cancelConfirmOpen && userReservation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
+        <div className="fixed inset-0 z-50 grid place-items-center p-4 animate-in fade-in duration-200">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => {
             console.log('Modal backdrop clicked, closing modal')
             setCancelConfirmOpen(false)
           }} />
-          <div className="relative w-full max-w-lg rounded-2xl border border-red-500/30 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 p-4 md:p-6 shadow-2xl shadow-red-500/20 animate-in zoom-in-95 duration-200 my-auto max-h-[90vh] overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl border border-red-500/30 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 p-6 shadow-2xl shadow-red-500/20 animate-in zoom-in-95 duration-200">
             {/* Header with Icon */}
-            <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 flex-shrink-0">
-                <X size={20} className="text-white md:hidden" />
-                <X size={24} className="text-white hidden md:block" />
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 flex-shrink-0">
+                <X size={24} className="text-white" />
               </div>
               <div className="flex-1">
-                <h4 className="text-lg md:text-xl font-bold text-white">Delete Reservation</h4>
-                <p className="text-xs md:text-sm text-white/60 mt-0.5 md:mt-1">This action cannot be undone</p>
+                <h4 className="text-xl font-bold text-white">Delete Reservation</h4>
+                <p className="text-sm text-white/60 mt-1">This action cannot be undone</p>
               </div>
             </div>
             
             {/* Warning Message */}
-            <div className="mb-3 md:mb-4 p-3 md:p-4 rounded-xl bg-red-500/10 border border-red-500/30">
-              <p className="text-xs md:text-sm text-white/90 leading-relaxed">
+            <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+              <p className="text-sm text-white/90 leading-relaxed">
                 Are you sure you want to delete your reservation for <span className="font-bold text-red-400">{slotLabel(userReservation.slotIndex)}</span>?
               </p>
             </div>
             
             {/* Reservation Details Card */}
-            <div className="p-3 md:p-4 rounded-xl bg-white/5 border border-white/10 space-y-2 md:space-y-3">
-              <div className="flex items-center gap-2 text-[10px] md:text-xs font-semibold text-white/70 uppercase tracking-wider">
-                <ShieldCheck size={12} className="md:hidden" />
-                <ShieldCheck size={14} className="hidden md:block" />
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white/70 uppercase tracking-wider">
+                <ShieldCheck size={14} />
                 <span>Reservation Details</span>
               </div>
-              <div className="grid gap-2">
-                <div className="flex items-center justify-between py-1.5 md:py-2 border-b border-white/10">
-                  <span className="text-xs md:text-sm text-white/60">Alliance</span>
-                  <span className="text-xs md:text-sm font-semibold text-white truncate ml-2">{userReservation.allianceName}</span>
+              <div className="grid gap-2.5">
+                <div className="flex items-center justify-between py-2 border-b border-white/10">
+                  <span className="text-sm text-white/60">Alliance</span>
+                  <span className="text-sm font-semibold text-white">{userReservation.allianceName}</span>
                 </div>
-                <div className="flex items-center justify-between py-1.5 md:py-2 border-b border-white/10">
-                  <span className="text-xs md:text-sm text-white/60">Player</span>
-                  <span className="text-xs md:text-sm font-semibold text-white truncate ml-2">{userReservation.assignedPlayerName || '—'}</span>
+                <div className="flex items-center justify-between py-2 border-b border-white/10">
+                  <span className="text-sm text-white/60">Player</span>
+                  <span className="text-sm font-semibold text-white">{userReservation.assignedPlayerName || '—'}</span>
                 </div>
-                <div className="flex items-center justify-between py-1.5 md:py-2 border-b border-white/10">
-                  <span className="text-xs md:text-sm text-white/60">Game ID</span>
-                  <span className="text-xs md:text-sm font-mono font-semibold text-blue-400 truncate ml-2">{userReservation.assignedGameId || '—'}</span>
+                <div className="flex items-center justify-between py-2 border-b border-white/10">
+                  <span className="text-sm text-white/60">Game ID</span>
+                  <span className="text-sm font-mono font-semibold text-blue-400">{userReservation.assignedGameId || '—'}</span>
                 </div>
-                <div className="flex items-center justify-between py-1.5 md:py-2">
-                  <span className="text-xs md:text-sm text-white/60">Time Slot</span>
-                  <span className="text-xs md:text-sm font-semibold text-white">{slotLabel(userReservation.slotIndex)}</span>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-white/60">Time Slot</span>
+                  <span className="text-sm font-semibold text-white">{slotLabel(userReservation.slotIndex)}</span>
                 </div>
               </div>
             </div>
             
             {/* Action Buttons */}
-            <div className="mt-4 md:mt-6 grid grid-cols-2 gap-2 md:gap-3">
+            <div className="mt-6 grid grid-cols-2 gap-3">
               <Button
                 variant="ghost"
                 onClick={() => setCancelConfirmOpen(false)}
-                className="h-10 md:h-12 rounded-xl text-xs md:text-sm font-semibold border border-white/20 hover:bg-white/10"
+                className="h-12 rounded-xl text-sm font-semibold border border-white/20 hover:bg-white/10"
               >
                 Keep Slot
               </Button>
@@ -415,19 +411,17 @@ export default function Svs() {
                 variant="danger"
                 onClick={cancelReservation}
                 disabled={cancelling}
-                className="h-10 md:h-12 rounded-xl text-xs md:text-sm font-semibold bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30"
+                className="h-12 rounded-xl text-sm font-semibold bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30"
               >
                 {cancelling ? (
-                  <span className="flex items-center gap-1.5 md:gap-2">
-                    <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span className="hidden sm:inline">Deleting...</span>
-                    <span className="sm:hidden">Deleting</span>
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Deleting...
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1.5 md:gap-2">
-                    <X size={14} className="md:hidden" />
-                    <X size={16} className="hidden md:block" />
-                    <span>Delete Slot</span>
+                  <span className="flex items-center gap-2">
+                    <X size={16} />
+                    Delete Slot
                   </span>
                 )}
               </Button>

@@ -101,6 +101,7 @@ export default function AllianceChatWindow() {
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialIndex, setTutorialIndex] = useState(0)
   const notificationSoundRef = useRef<HTMLAudioElement | null>(null)
+  const [sseConnected, setSseConnected] = useState(false)
 
   function scrollToBottom() {
     if (!listRef.current) return
@@ -294,11 +295,37 @@ export default function AllianceChatWindow() {
     const token = localStorage.getItem('token')
     const base = (api.defaults.baseURL || '').replace(/\/$/, '') || '/api'
     const streamUrl = `${base}/alliance/rooms/${code}/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`
+    console.log('Connecting to SSE stream:', streamUrl)
     const source = new EventSource(streamUrl)
-    source.onmessage = (event) => handleSse(event as MessageEvent)
-    source.onerror = () => {
-      source.close()
+    
+    source.onopen = () => {
+      console.log('SSE connection opened successfully')
+      setSseConnected(true)
     }
+    
+    source.onmessage = (event) => {
+      console.log('SSE message received:', event.data)
+      handleSse(event as MessageEvent)
+    }
+    
+    source.onerror = (error) => {
+      console.error('SSE connection error:', error)
+      console.log('SSE readyState:', source.readyState)
+      setSseConnected(false)
+      
+      // ReadyState 2 means closed - try to reconnect
+      if (source.readyState === EventSource.CLOSED) {
+        console.log('SSE connection closed, attempting to reconnect in 3 seconds...')
+        source.close()
+        setTimeout(() => {
+          if (joined?.code === code) {
+            console.log('Reconnecting SSE...')
+            attachStream(code)
+          }
+        }, 3000)
+      }
+    }
+    
     sseRef.current = source
   }
 
@@ -307,6 +334,7 @@ export default function AllianceChatWindow() {
       sseRef.current.close()
       sseRef.current = null
     }
+    setSseConnected(false)
   }
 
   function handleSse(event: MessageEvent) {
@@ -457,7 +485,14 @@ export default function AllianceChatWindow() {
                   <ChevronLeft size={20} />
                 </button>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-sm md:text-base font-semibold text-white truncate">{joined.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm md:text-base font-semibold text-white truncate">{joined.name}</h2>
+                    {/* Connection Status Indicator */}
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${sseConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+                      <span className="hidden md:inline">{sseConnected ? 'Live' : 'Reconnecting...'}</span>
+                    </div>
+                  </div>
                   <p className="text-xs text-white/50">State {joined.state} • {joined.code}</p>
                 </div>
               </div>
