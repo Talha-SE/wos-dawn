@@ -153,7 +153,7 @@ const COUNTRY_TO_LANG: Record<string, string[]> = {
   UZ: ['uz'],
   NP: ['ne'],
   IN: ['hi', 'en', 'ta', 'mr', 'bn', 'gu'],
-  PK: ['ur', 'en'],
+  PK: ['en', 'ur'],
   BD: ['bn', 'en'],
   LK: ['si', 'ta', 'en'],
   MV: ['dv'],
