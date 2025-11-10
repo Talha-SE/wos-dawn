@@ -5,9 +5,10 @@ import Input from '../components/Input'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
 import { BookOpenCheck, ChevronLeft, ChevronRight, Mic, Send, X } from 'lucide-react'
+import notificationMp3 from '../assets/room-message-notification.mp3'
 
 type Room = { code: string; name: string; state: number; isOwner?: boolean }
-type Message = { _id: string; roomCode: string; senderEmail: string; senderId: string; content: string; createdAt: string }
+type Message = { _id: string; roomCode: string; senderEmail: string; senderId: string; senderName?: string; content: string; createdAt: string }
 
 type TutorialSlide = {
   title: string
@@ -102,6 +103,11 @@ export default function AllianceChatWindow() {
   const [tutorialIndex, setTutorialIndex] = useState(0)
   const notificationSoundRef = useRef<HTMLAudioElement | null>(null)
   const [sseConnected, setSseConnected] = useState(false)
+  const lastSoundPlayedRef = useRef<number>(0)
+  // Typing indicator state and timers
+  const [typingUsers, setTypingUsers] = useState<Record<string, { email: string; name?: string }>>({})
+  const lastTypingSentRef = useRef<number>(0)
+  const typingStopTimerRef = useRef<number | null>(null)
 
   // Generate consistent color for each user based on their email
   function getUserColor(email: string): string {
@@ -368,6 +374,12 @@ export default function AllianceChatWindow() {
       sseRef.current = null
     }
     setSseConnected(false)
+    // Clear typing state and timers on disconnect
+    setTypingUsers({})
+    if (typingStopTimerRef.current) {
+      window.clearTimeout(typingStopTimerRef.current)
+      typingStopTimerRef.current = null
+    }
   }
 
   function handleSse(event: MessageEvent) {
@@ -390,11 +402,28 @@ export default function AllianceChatWindow() {
         })
         
         if (notificationSoundRef.current && payload.senderEmail !== user?.email) {
-          console.log('Playing notification sound for incoming message')
-          notificationSoundRef.current.currentTime = 0
-          notificationSoundRef.current.play().catch(() => undefined)
+          const now = Date.now()
+          if (now - lastSoundPlayedRef.current > 700) {
+            lastSoundPlayedRef.current = now
+            console.log('Playing notification sound for incoming message')
+            try {
+              notificationSoundRef.current.volume = 0.8
+            } catch {}
+            notificationSoundRef.current.currentTime = 0
+            notificationSoundRef.current.play().catch(() => undefined)
+          }
         }
         scrollToBottom()
+      } else if (data?.type === 'typing' && data.payload) {
+        const p = data.payload as { senderId: string; senderEmail: string; typing: boolean }
+        // Ignore own typing events
+        if (p.senderEmail === user?.email) return
+        setTypingUsers((prev) => {
+          const next = { ...prev }
+          if (p.typing) next[p.senderId] = { email: p.senderEmail }
+          else delete next[p.senderId]
+          return next
+        })
       } else if (data?.type === 'message_deleted' && data.payload?._id) {
         const id = data.payload._id as string
         console.log('Removing deleted message:', id)
@@ -405,6 +434,22 @@ export default function AllianceChatWindow() {
     } catch (err) {
       console.error('SSE parse error', err, 'Raw data:', event.data)
     }
+  }
+
+  // Emit typing (throttled) and schedule stop after idle
+  async function emitTypingKeepAlive() {
+    try {
+      if (!joined?.code) return
+      const now = Date.now()
+      if (now - lastTypingSentRef.current > 1200) {
+        lastTypingSentRef.current = now
+        await api.post(`/alliance/rooms/${joined.code}/typing`, { typing: true })
+      }
+      if (typingStopTimerRef.current) window.clearTimeout(typingStopTimerRef.current)
+      typingStopTimerRef.current = window.setTimeout(async () => {
+        try { if (joined?.code) await api.post(`/alliance/rooms/${joined.code}/typing`, { typing: false }) } catch {}
+      }, 1800)
+    } catch {}
   }
 
   async function sendMessage() {
@@ -517,9 +562,7 @@ export default function AllianceChatWindow() {
   if (joined?.code) {
     return (
       <>
-        <audio ref={notificationSoundRef} className="hidden" preload="auto">
-          <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
-        </audio>
+        <audio ref={notificationSoundRef} className="hidden" preload="auto" src={notificationMp3} />
         {/* Fixed full-screen container that prevents content from hiding */}
         <div className="fixed inset-0 z-30 flex flex-col bg-transparent md:relative md:inset-auto md:z-auto md:bg-transparent md:h-[calc(100vh-160px)]">
           {/* Sticky Header Bar - Always visible at top */}
@@ -656,7 +699,7 @@ export default function AllianceChatWindow() {
                         {/* Sender label only at start of a block from same sender */}
                         {showSenderLabel && (
                           <div className={`text-xs font-bold mb-1.5 px-1 drop-shadow-lg ${getUserColor(msg.senderEmail)}`}>
-                            {msg.senderEmail.split('@')[0]}
+                            {(msg.senderName && msg.senderName.trim()) || msg.senderEmail.split('@')[0]}
                           </div>
                         )}
                         
@@ -697,6 +740,24 @@ export default function AllianceChatWindow() {
                   )
                 })
               )}
+              {/* Typing indicators for other users */}
+              {Object.keys(typingUsers).length > 0 && (
+                <div className="px-4 md:px-6">
+                  {Object.entries(typingUsers).map(([id, u]) => (
+                    <div key={id} className="mb-2 max-w-[65%] lg:max-w-[50%]">
+                      <div className="text-[11px] font-medium text-white/60 mb-1 px-1">{u.email.split('@')[0]}</div>
+                      <div className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 border border-white/15 backdrop-blur-md shadow-lg">
+                        <div className="flex items-end gap-1 h-3">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '0s' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: '0.15s' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                        </div>
+                        <span className="text-[11px] text-white/70">typing…</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div ref={bottomRef} />
             </div>
           </div>
@@ -724,7 +785,7 @@ export default function AllianceChatWindow() {
                 <div className="flex-1 relative min-w-0">
                   <Input
                     value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
+                    onChange={(e) => { setMessageText(e.target.value); if (e.target.value.trim()) emitTypingKeepAlive() }}
                     placeholder={transcribing ? 'Transcribing...' : 'Type a message...'}
                     disabled={transcribing}
                     name="chat-message"

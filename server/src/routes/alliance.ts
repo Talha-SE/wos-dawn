@@ -49,6 +49,8 @@ router.get('/rooms/:code/meta', requireAuth, async (req: AuthRequest, res) => {
 })
 
 const roomStreams = new Map<string, Set<Client>>()
+// Track typing status per room with auto-expiry
+const roomTypingTimers = new Map<string, Map<string, NodeJS.Timeout>>()
 
 function makeRandom(len = 5) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -169,7 +171,17 @@ router.get('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) =
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean()
-    res.json(docs.reverse())
+
+    // Attach senderName using user's gameName when available
+    const userIds = Array.from(new Set(docs.map(d => String(d.senderId))))
+    const users = await User.find({ _id: { $in: userIds } }).select('gameName email').lean()
+    const userMap = new Map(users.map(u => [String(u._id), u]))
+    const out = docs.reverse().map(d => {
+      const u = userMap.get(String(d.senderId)) as any
+      const senderName = (u?.gameName && String(u.gameName).trim()) || String(d.senderEmail).split('@')[0]
+      return { ...d, senderName }
+    })
+    res.json(out)
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to load messages' })
   }
@@ -186,7 +198,7 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
     const membership = await AllianceMembership.findOne({ roomCode: code, userId: req.userId })
     if (!membership) return res.status(403).json({ message: 'Join the room first' })
 
-    const user = await User.findById(req.userId).select('email')
+    const user = await User.findById(req.userId).select('email gameName')
     if (!user) return res.status(401).json({ message: 'User not found' })
 
     const doc = await AllianceMessage.create({
@@ -203,6 +215,7 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
         roomCode: doc.roomCode,
         senderEmail: doc.senderEmail,
         senderId: doc.senderId,
+        senderName: (user.gameName && user.gameName.trim()) || String(user.email).split('@')[0],
         content: doc.content,
         createdAt: doc.createdAt
       }
@@ -214,6 +227,68 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
     res.status(201).json({ ok: true })
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to send message' })
+  }
+})
+
+// Realtime typing indicator (start/keepalive/stop)
+router.post('/rooms/:code/typing', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const code = String(req.params.code)
+    const { typing } = req.body as { typing: boolean }
+
+    // Only members can broadcast typing
+    const membership = await AllianceMembership.findOne({ roomCode: code, userId: req.userId })
+    if (!membership) return res.status(403).json({ message: 'Join the room first' })
+
+    const user = await User.findById(req.userId).select('email')
+    if (!user) return res.status(401).json({ message: 'User not found' })
+
+    // Send typing event to SSE subscribers
+    const payload = {
+      type: 'typing',
+      payload: {
+        roomCode: code,
+        senderId: req.userId,
+        senderEmail: user.email,
+        senderName: (user.gameName && user.gameName.trim()) || String(user.email).split('@')[0],
+        typing: !!typing,
+      }
+    }
+    broadcastMessage(code, payload)
+
+    // Manage auto-timeout: if typing=true, keep alive for 4s unless renewed
+    const byRoom = roomTypingTimers.get(code) || new Map<string, NodeJS.Timeout>()
+    if (typing) {
+      // Clear previous timer if any
+      const key = String(req.userId)
+      const existing = byRoom.get(key)
+      if (existing) clearTimeout(existing)
+      // Set a new timer to auto-stop typing after 4s
+      const to = setTimeout(() => {
+        // Broadcast stop only if room still active
+        try {
+          broadcastMessage(code, {
+            type: 'typing',
+            payload: { roomCode: code, senderId: req.userId, senderEmail: user.email, typing: false }
+          })
+        } catch {}
+        byRoom.delete(key)
+        if (byRoom.size === 0) roomTypingTimers.delete(code)
+      }, 4000)
+      byRoom.set(key, to)
+      roomTypingTimers.set(code, byRoom)
+    } else {
+      // Explicit stop
+      const key = String(req.userId)
+      const existing = byRoom.get(key)
+      if (existing) clearTimeout(existing)
+      byRoom.delete(key)
+      if (byRoom.size === 0) roomTypingTimers.delete(code)
+    }
+
+    res.json({ ok: true })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to update typing status' })
   }
 })
 
