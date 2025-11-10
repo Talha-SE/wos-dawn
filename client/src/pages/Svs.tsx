@@ -228,24 +228,31 @@ export default function Svs() {
               const taken = map.get(i)
               const isMySlot = taken && taken.reservedBy === user?.id
               return (
-              <div key={i} className="relative">
+              <div key={i} className="relative group/card">
                 <button
                   disabled={!!taken || reserving === i || !stateName.trim() || !allianceName.trim()}
                   onClick={() => requestReserve(i)}
-                  className={`w-full group relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200 min-h-[100px] flex flex-col justify-between ${taken ? 'cursor-not-allowed border-emerald-400/30 bg-gradient-to-br from-emerald-400/15 to-emerald-500/5' : 'border-white/10 bg-white/5 hover:border-blue-500/40 hover:bg-white/10 active:scale-95'} ${reserving === i ? 'opacity-60' : 'opacity-100'} ${isMySlot ? 'border-blue-400/40 bg-gradient-to-br from-blue-400/20 to-blue-500/10' : ''}`}
+                  className={`w-full relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200 min-h-[120px] flex flex-col justify-between ${taken ? 'cursor-not-allowed border-emerald-400/30 bg-gradient-to-br from-emerald-400/15 to-emerald-500/5' : 'border-white/10 bg-white/5 hover:border-blue-500/40 hover:bg-white/10 active:scale-95'} ${reserving === i ? 'opacity-60' : 'opacity-100'} ${isMySlot ? 'border-blue-500/50 bg-gradient-to-br from-blue-500/25 via-blue-400/15 to-purple-500/10 shadow-lg shadow-blue-500/20' : ''}`}
                 >
+                  {/* Time Label */}
                   <div className="flex items-center gap-1.5 text-[10px] text-white/50 font-medium">
                     <Clock size={10} />
                     <span>{slotLabel(i)}</span>
                   </div>
+                  
                   {taken ? (
-                    <div className="mt-2 space-y-0.5">
-                      <div className={`text-xs font-semibold truncate ${isMySlot ? 'text-blue-300' : 'text-emerald-300'}`}>
+                    <div className="mt-2 space-y-1">
+                      <div className={`text-xs font-semibold truncate ${isMySlot ? 'text-blue-200' : 'text-emerald-300'}`}>
                         {taken.assignedPlayerName || 'Reserved'}
-                        {isMySlot && <span className="ml-1 text-[9px] text-blue-400/70">(You)</span>}
                       </div>
                       <div className="text-[10px] text-white/60 font-mono truncate">ID: {taken.assignedGameId || '—'}</div>
                       <div className="text-[10px] text-white/50 truncate">{taken.allianceName}</div>
+                      {isMySlot && (
+                        <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/30 border border-blue-400/40 text-[9px] font-medium text-blue-200">
+                          <UserIcon size={8} />
+                          <span>Your Slot</span>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="mt-2">
@@ -253,18 +260,23 @@ export default function Svs() {
                     </div>
                   )}
                 </button>
+                
+                {/* Enhanced Delete Button - Only visible for user's own slots */}
                 {isMySlot && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setCancelConfirmOpen(true)
-                    }}
-                    disabled={cancelling}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-lg bg-red-500/80 hover:bg-red-500 text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg z-10"
-                    title="Cancel this reservation"
-                  >
-                    <X size={14} />
-                  </button>
+                  <div className="absolute top-2 right-2 z-20">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setCancelConfirmOpen(true)
+                      }}
+                      disabled={cancelling}
+                      className="group/btn w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 via-red-600 to-red-700 hover:from-red-400 hover:via-red-500 hover:to-red-600 text-white flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg shadow-red-500/40 hover:shadow-red-500/60 border border-red-400/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete your reservation"
+                      aria-label="Delete slot reservation"
+                    >
+                      <X size={16} className="group-hover/btn:rotate-90 transition-transform duration-200" />
+                    </button>
+                  </div>
                 )}
               </div>
               )
@@ -318,39 +330,79 @@ export default function Svs() {
 
       {/* Cancel Confirmation Modal */}
       {cancelConfirmOpen && userReservation && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCancelConfirmOpen(false)} />
-          <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl">
-            <div className="flex items-center gap-3 mb-2 text-white">
-              <ShieldCheck size={18} className="text-red-400" />
-              <h4 className="font-display text-lg">Cancel Reservation</h4>
-            </div>
-            <p className="text-white/70 text-sm leading-relaxed">
-              Are you sure you want to cancel your reservation for <span className="font-semibold text-white">{slotLabel(userReservation.slotIndex)}</span>?
-            </p>
-            <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
-              <div className="text-xs text-white/50 mb-1">Current Reservation Details:</div>
-              <div className="text-sm text-white/80 space-y-1">
-                <div><span className="text-white/50">Alliance:</span> <span className="font-medium">{userReservation.allianceName}</span></div>
-                <div><span className="text-white/50">Player:</span> <span className="font-medium">{userReservation.assignedPlayerName || '—'}</span></div>
-                <div><span className="text-white/50">Game ID:</span> <span className="font-mono text-xs">{userReservation.assignedGameId || '—'}</span></div>
+        <div className="fixed inset-0 z-50 grid place-items-center p-4 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setCancelConfirmOpen(false)} />
+          <div className="relative w-full max-w-lg rounded-2xl border border-red-500/30 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 p-6 shadow-2xl shadow-red-500/20 animate-in zoom-in-95 duration-200">
+            {/* Header with Icon */}
+            <div className="flex items-start gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 flex-shrink-0">
+                <X size={24} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-xl font-bold text-white">Delete Reservation</h4>
+                <p className="text-sm text-white/60 mt-1">This action cannot be undone</p>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            
+            {/* Warning Message */}
+            <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+              <p className="text-sm text-white/90 leading-relaxed">
+                Are you sure you want to delete your reservation for <span className="font-bold text-red-400">{slotLabel(userReservation.slotIndex)}</span>?
+              </p>
+            </div>
+            
+            {/* Reservation Details Card */}
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white/70 uppercase tracking-wider">
+                <ShieldCheck size={14} />
+                <span>Reservation Details</span>
+              </div>
+              <div className="grid gap-2.5">
+                <div className="flex items-center justify-between py-2 border-b border-white/10">
+                  <span className="text-sm text-white/60">Alliance</span>
+                  <span className="text-sm font-semibold text-white">{userReservation.allianceName}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-white/10">
+                  <span className="text-sm text-white/60">Player</span>
+                  <span className="text-sm font-semibold text-white">{userReservation.assignedPlayerName || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-white/10">
+                  <span className="text-sm text-white/60">Game ID</span>
+                  <span className="text-sm font-mono font-semibold text-blue-400">{userReservation.assignedGameId || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-white/60">Time Slot</span>
+                  <span className="text-sm font-semibold text-white">{slotLabel(userReservation.slotIndex)}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
               <Button
                 variant="ghost"
                 onClick={() => setCancelConfirmOpen(false)}
-                className="h-11 rounded-xl"
+                className="h-12 rounded-xl text-sm font-semibold border border-white/20 hover:bg-white/10"
               >
-                Keep Reservation
+                Keep Slot
               </Button>
               <Button
                 variant="danger"
                 onClick={cancelReservation}
                 disabled={cancelling}
-                className="h-11 rounded-xl"
+                className="h-12 rounded-xl text-sm font-semibold bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/30"
               >
-                {cancelling ? 'Cancelling…' : 'Cancel Slot'}
+                {cancelling ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Deleting...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <X size={16} />
+                    Delete Slot
+                  </span>
+                )}
               </Button>
             </div>
           </div>
