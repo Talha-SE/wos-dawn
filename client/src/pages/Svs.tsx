@@ -3,7 +3,7 @@ import Input from '../components/Input'
 import Button from '../components/Button'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
-import { Clock, ShieldCheck, User as UserIcon, MapPin, CalendarDays } from 'lucide-react'
+import { Clock, ShieldCheck, User as UserIcon, MapPin, CalendarDays, X } from 'lucide-react'
 
 type SlotItem = {
   _id: string
@@ -226,29 +226,47 @@ export default function Svs() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {slots.map((i) => {
               const taken = map.get(i)
+              const isMySlot = taken && taken.reservedBy === user?.id
               return (
-              <button
-                key={i}
-                disabled={!!taken || reserving === i || !stateName.trim() || !allianceName.trim()}
-                onClick={() => requestReserve(i)}
-                className={`group relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200 min-h-[100px] flex flex-col justify-between ${taken ? 'cursor-not-allowed border-emerald-400/30 bg-gradient-to-br from-emerald-400/15 to-emerald-500/5' : 'border-white/10 bg-white/5 hover:border-blue-500/40 hover:bg-white/10 active:scale-95'} ${reserving === i ? 'opacity-60' : 'opacity-100'}`}
-              >
-                <div className="flex items-center gap-1.5 text-[10px] text-white/50 font-medium">
-                  <Clock size={10} />
-                  <span>{slotLabel(i)}</span>
-                </div>
-                {taken ? (
-                  <div className="mt-2 space-y-0.5">
-                    <div className="text-xs font-semibold text-emerald-300 truncate">{taken.assignedPlayerName || 'Reserved'}</div>
-                    <div className="text-[10px] text-white/60 font-mono truncate">ID: {taken.assignedGameId || '—'}</div>
-                    <div className="text-[10px] text-white/50 truncate">{taken.allianceName}</div>
+              <div key={i} className="relative">
+                <button
+                  disabled={!!taken || reserving === i || !stateName.trim() || !allianceName.trim()}
+                  onClick={() => requestReserve(i)}
+                  className={`w-full group relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200 min-h-[100px] flex flex-col justify-between ${taken ? 'cursor-not-allowed border-emerald-400/30 bg-gradient-to-br from-emerald-400/15 to-emerald-500/5' : 'border-white/10 bg-white/5 hover:border-blue-500/40 hover:bg-white/10 active:scale-95'} ${reserving === i ? 'opacity-60' : 'opacity-100'} ${isMySlot ? 'border-blue-400/40 bg-gradient-to-br from-blue-400/20 to-blue-500/10' : ''}`}
+                >
+                  <div className="flex items-center gap-1.5 text-[10px] text-white/50 font-medium">
+                    <Clock size={10} />
+                    <span>{slotLabel(i)}</span>
                   </div>
-                ) : (
-                  <div className="mt-2">
-                    <span className="text-xs font-semibold text-white/70">Available</span>
-                  </div>
+                  {taken ? (
+                    <div className="mt-2 space-y-0.5">
+                      <div className={`text-xs font-semibold truncate ${isMySlot ? 'text-blue-300' : 'text-emerald-300'}`}>
+                        {taken.assignedPlayerName || 'Reserved'}
+                        {isMySlot && <span className="ml-1 text-[9px] text-blue-400/70">(You)</span>}
+                      </div>
+                      <div className="text-[10px] text-white/60 font-mono truncate">ID: {taken.assignedGameId || '—'}</div>
+                      <div className="text-[10px] text-white/50 truncate">{taken.allianceName}</div>
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      <span className="text-xs font-semibold text-white/70">Available</span>
+                    </div>
+                  )}
+                </button>
+                {isMySlot && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setCancelConfirmOpen(true)
+                    }}
+                    disabled={cancelling}
+                    className="absolute top-2 right-2 w-6 h-6 rounded-lg bg-red-500/80 hover:bg-red-500 text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 shadow-lg z-10"
+                    title="Cancel this reservation"
+                  >
+                    <X size={14} />
+                  </button>
                 )}
-              </button>
+              </div>
               )
             })}
           </div>
