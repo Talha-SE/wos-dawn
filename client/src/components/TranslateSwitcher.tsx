@@ -391,8 +391,6 @@ export default function TranslateSwitcher() {
       if (source === 'manual') {
         try { localStorage.setItem('wos_manual_lang', NONE_OPTION.code) } catch {}
       }
-      // Force reload to ensure clean state without any translations
-      setTimeout(() => window.location.reload(), 100)
       return
     }
     
@@ -425,7 +423,7 @@ export default function TranslateSwitcher() {
       setQuery('')
       // Force page reload to clear any translation artifacts
       if (document.body.classList.contains('translated-ltr') || document.body.classList.contains('translated-rtl')) {
-        setTimeout(() => window.location.reload(), 100)
+        // no-op
       }
       return
     }
@@ -458,7 +456,7 @@ export default function TranslateSwitcher() {
               clearAllTranslationData()
               setCurrent(NONE_OPTION)
               // Reload to ensure clean state
-              setTimeout(() => window.location.reload(), 100)
+              // no-op
             } else {
               // Restore the manual selection
               restoreManual()
@@ -518,7 +516,7 @@ export default function TranslateSwitcher() {
                         setOpen(false)
                         setQuery('')
                         // Reload to ensure completely clean state
-                        setTimeout(() => window.location.reload(), 100)
+                        // no-op
                       } else {
                         applyLanguage(lang, 'manual')
                       }
