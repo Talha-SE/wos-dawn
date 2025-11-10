@@ -99,6 +99,8 @@ export default function AllianceChatWindow() {
   const chunksRef = useRef<Blob[]>([])
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+  const recordStopTimerRef = useRef<number | null>(null)
+  const recordingStartAtRef = useRef<number>(0)
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialIndex, setTutorialIndex] = useState(0)
   const notificationSoundRef = useRef<HTMLAudioElement | null>(null)
@@ -183,24 +185,38 @@ export default function AllianceChatWindow() {
 
   async function toggleRecord() {
     if (recording) {
+      try { recRef.current?.stop() } catch {}
+      if (recordStopTimerRef.current) { window.clearTimeout(recordStopTimerRef.current); recordStopTimerRef.current = null }
       setRecording(false)
-      recRef.current?.stop()
       return
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       mediaRef.current = stream
       chunksRef.current = []
-      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'
-      const rec = new MediaRecorder(stream, { mimeType: mime })
+      const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/ogg'
+      ] as const
+      let mime = ''
+      for (const c of candidates) { if (MediaRecorder.isTypeSupported(c)) { mime = c; break } }
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
       recRef.current = rec
       rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data) }
+      rec.onerror = () => {
+        try { rec.stop() } catch {}
+      }
       rec.onstop = async () => {
+        if (recordStopTimerRef.current) { window.clearTimeout(recordStopTimerRef.current); recordStopTimerRef.current = null }
+        setRecording(false)
         try {
-          const blob = new Blob(chunksRef.current, { type: mime })
+          const blob = chunksRef.current.length ? new Blob(chunksRef.current, { type: mime || 'audio/webm' }) : null
           chunksRef.current = []
           stream.getTracks().forEach((t) => t.stop())
           mediaRef.current = null
+          if (!blob) return
           setTranscribing(true)
           const b64 = await new Promise<string>((resolve, reject) => {
             const fr = new FileReader()
@@ -210,8 +226,8 @@ export default function AllianceChatWindow() {
           })
           const { data } = await api.post('/ai/transcribe', {
             audioBase64: b64,
-            mimeType: blob.type || 'audio/webm',
-            fileName: 'voice.webm',
+            mimeType: blob.type || mime || 'audio/webm',
+            fileName: (mime.includes('ogg') ? 'voice.ogg' : 'voice.webm'),
             sourceLanguage: 'autodetect'
           })
           const t: string = data?.text || ''
@@ -223,9 +239,16 @@ export default function AllianceChatWindow() {
         }
       }
       rec.start()
+      recordingStartAtRef.current = Date.now()
       setRecording(true)
+      recordStopTimerRef.current = window.setTimeout(() => {
+        try { rec.stop() } catch {}
+      }, 60000)
     } catch (e) {
       console.error('mic', e)
+      try { mediaRef.current?.getTracks().forEach((t) => t.stop()); mediaRef.current = null } catch {}
+      chunksRef.current = []
+      setRecording(false)
     }
   }
 
@@ -489,6 +512,12 @@ export default function AllianceChatWindow() {
     return () => {
       if (searchTimer.current) window.clearTimeout(searchTimer.current)
       detachStream()
+      try { recRef.current?.stop() } catch {}
+      try { mediaRef.current?.getTracks().forEach((t) => t.stop()) } catch {}
+      mediaRef.current = null
+      recRef.current = null
+      chunksRef.current = []
+      if (recordStopTimerRef.current) { window.clearTimeout(recordStopTimerRef.current); recordStopTimerRef.current = null }
     }
   }, [])
 
@@ -774,11 +803,17 @@ export default function AllianceChatWindow() {
                   className={`flex-none h-10 w-10 md:h-11 md:w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
                     recording
                       ? 'bg-red-500 text-white shadow-red-500/50 scale-105'
-                      : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/15 active:scale-95'
+                      : transcribing
+                        ? 'bg-white/10 text-white/50'
+                        : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/15 active:scale-95'
                   }`}
                   title={recording ? 'Stop recording' : 'Voice message'}
                 >
-                  <Mic size={17} className={recording ? 'animate-pulse' : ''} />
+                  {transcribing ? (
+                    <div className="w-4 h-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Mic size={17} className={recording ? 'animate-pulse' : ''} />
+                  )}
                 </button>
 
                 {/* Input Field */}
