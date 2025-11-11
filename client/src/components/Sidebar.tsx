@@ -242,7 +242,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 active={pathname === '/dashboard/alliance-chat'}
                 icon={<MessageSquare size={18} />}
                 collapsed={false}
-                label="Alliance Chat"
+                label={
+                  <span className="flex items-center gap-2">
+                    <span>Alliance Chat</span>
+                    <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/30 to-pink-500/30 text-amber-200 border border-amber-400/40 px-1.5 py-0.5 text-[10px] leading-none animate-pulse">🔥 New</span>
+                  </span>
+                }
                 onNavigate={onMobileClose}
               />
               <button
@@ -316,7 +321,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             active={pathname.includes('/chat-ai')}
             icon={<MessageSquare size={18} />}
             collapsed={collapsed}
-            label="Chat AI"
+            label={
+              <span className="flex items-center gap-2">
+                <span>Chat AI</span>
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/30 to-pink-500/30 text-amber-200 border border-amber-400/40 px-1.5 py-0.5 text-[10px] leading-none animate-pulse">🔥 New</span>
+              </span>
+            }
             onNavigate={onMobileClose}
           />
           <NavItem
@@ -324,7 +334,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             active={pathname.includes('/contact-admin')}
             icon={<Headphones size={18} />}
             collapsed={collapsed}
-            label="Contact Admin"
+            label={
+              <span className="flex items-center gap-2">
+                <span>Contact Admin</span>
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/30 to-pink-500/30 text-amber-200 border border-amber-400/40 px-1.5 py-0.5 text-[10px] leading-none animate-pulse">🔥 New</span>
+              </span>
+            }
             onNavigate={onMobileClose}
           />
           
