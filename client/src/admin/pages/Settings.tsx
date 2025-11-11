@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import Input from '../../components/Input'
 import Button from '../../components/Button'
 import api from '../../services/api'
+import TranslateSwitcher from '../../components/TranslateSwitcher'
 
 export default function Settings() {
   const [dbBackupStatus, setDbBackupStatus] = useState<string>('')
@@ -49,6 +50,16 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold text-white">Admin Settings</h1>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+        <h2 className="text-lg font-semibold text-white">Translation Settings</h2>
+        <div className="text-sm text-white/70">
+          Manage auto-translation and choose a manual language for the admin dashboard.
+        </div>
+        <div className="pt-1">
+          <TranslateSwitcher />
+        </div>
+      </div>
 
       {/* Info Notice */}
       <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-5">

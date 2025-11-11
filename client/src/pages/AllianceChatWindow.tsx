@@ -101,6 +101,7 @@ export default function AllianceChatWindow() {
   const [transcribing, setTranscribing] = useState(false)
   const recordStopTimerRef = useRef<number | null>(null)
   const recordingStartAtRef = useRef<number>(0)
+  const recordActionAtRef = useRef<number>(0)
   const [showTutorial, setShowTutorial] = useState(false)
   const [tutorialIndex, setTutorialIndex] = useState(0)
   const notificationSoundRef = useRef<HTMLAudioElement | null>(null)
@@ -184,7 +185,13 @@ export default function AllianceChatWindow() {
   const currentTutorial = tutorialSlides[tutorialIndex]
 
   async function toggleRecord() {
+    // simple debounce to prevent rapid double toggles
+    const now = Date.now()
+    if (now - recordActionAtRef.current < 500) return
+    recordActionAtRef.current = now
+
     if (recording) {
+      try { recRef.current?.requestData() } catch {}
       try { recRef.current?.stop() } catch {}
       if (recordStopTimerRef.current) { window.clearTimeout(recordStopTimerRef.current); recordStopTimerRef.current = null }
       setRecording(false)
@@ -238,10 +245,12 @@ export default function AllianceChatWindow() {
           setTranscribing(false)
         }
       }
-      rec.start()
+      // start with small timeslice so browsers flush data reliably
+      rec.start(250)
       recordingStartAtRef.current = Date.now()
       setRecording(true)
       recordStopTimerRef.current = window.setTimeout(() => {
+        try { rec.requestData() } catch {}
         try { rec.stop() } catch {}
       }, 60000)
     } catch (e) {
@@ -428,8 +437,14 @@ export default function AllianceChatWindow() {
         
         if (notificationSoundRef.current && payload.senderEmail !== user?.email) {
           const now = Date.now()
-          if (now - lastSoundPlayedRef.current > 700) {
+          let globalOk = true
+          try {
+            const g = Number(localStorage.getItem('wos_sound_global_at') || 0)
+            globalOk = now - g > 700
+          } catch {}
+          if (now - lastSoundPlayedRef.current > 700 && globalOk) {
             lastSoundPlayedRef.current = now
+            try { localStorage.setItem('wos_sound_global_at', String(now)) } catch {}
             console.log('Playing notification sound for incoming message')
             try {
               notificationSoundRef.current.volume = 0.8
@@ -795,6 +810,16 @@ export default function AllianceChatWindow() {
               <div ref={bottomRef} />
             </div>
           </div>
+
+          {/* Listening Popup */}
+          {recording && (
+            <div className="absolute bottom-24 left-0 right-0 z-50 flex justify-center px-3">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 text-white/90 backdrop-blur-md px-3 py-1.5 text-xs shadow-lg">
+                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                <span>Listening… tap mic to stop</span>
+              </div>
+            </div>
+          )}
 
           {/* Fixed Typing Bar - Positioned at bottom without hiding sidebar */}
           <div className="absolute bottom-0 left-0 right-0 flex justify-center px-3 md:px-6 pb-safe pb-3 md:pb-4 bg-gradient-to-t from-slate-950 via-slate-950/98 to-transparent pt-4 pointer-events-none z-40">
