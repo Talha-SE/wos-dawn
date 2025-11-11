@@ -186,6 +186,47 @@ export default function AllianceChatWindow() {
 
   const currentTutorial = tutorialSlides[tutorialIndex]
 
+  async function waitForChunks(timeout = 500) {
+    const start = Date.now()
+    while (Date.now() - start < timeout) {
+      if (chunksRef.current.length > 0) return
+      await new Promise((r) => setTimeout(r, 40))
+    }
+  }
+
+  async function transcribeOnce(blob: Blob, mimeHint: string, timeoutMs = 15000): Promise<string> {
+    const b64 = await new Promise<string>((resolve, reject) => {
+      const fr = new FileReader()
+      fr.onerror = () => reject(new Error('read'))
+      fr.onloadend = () => resolve(String(fr.result).split(',')[1] || '')
+      fr.readAsDataURL(blob)
+    })
+    const ctrl = new AbortController()
+    const to = setTimeout(() => ctrl.abort(), timeoutMs)
+    try {
+      const { data } = await api.post('/ai/transcribe', {
+        audioBase64: b64,
+        mimeType: blob.type || mimeHint || 'audio/webm',
+        fileName: ((blob.type || mimeHint).includes('ogg') ? 'voice.ogg' : 'voice.webm'),
+        sourceLanguage: 'autodetect'
+      }, { signal: ctrl.signal as any })
+      return String(data?.text || '')
+    } finally {
+      clearTimeout(to)
+    }
+  }
+
+  async function transcribeWithRetry(blob: Blob, mimeHint: string): Promise<string> {
+    const first = await transcribeOnce(blob, mimeHint).catch(() => '')
+    if (first && first.trim()) return first
+    // If blob is too small, likely too short/silent — don't spam retries
+    if (blob.size < 1200) return ''
+    // brief pause before retry to allow backend readiness
+    await new Promise((r) => setTimeout(r, 300))
+    const second = await transcribeOnce(blob, mimeHint).catch(() => '')
+    return second
+  }
+
   async function toggleRecord() {
     // simple debounce to prevent rapid double toggles
     const now = Date.now()
@@ -193,10 +234,19 @@ export default function AllianceChatWindow() {
     recordActionAtRef.current = now
 
     if (recording) {
-      try { recRef.current?.requestData() } catch {}
-      try { recRef.current?.stop() } catch {}
-      if (recordStopTimerRef.current) { window.clearTimeout(recordStopTimerRef.current); recordStopTimerRef.current = null }
-      setRecording(false)
+      const elapsed = Date.now() - recordingStartAtRef.current
+      const minMs = 600
+      const doStop = () => {
+        try { recRef.current?.requestData() } catch {}
+        try { recRef.current?.stop() } catch {}
+        if (recordStopTimerRef.current) { window.clearTimeout(recordStopTimerRef.current); recordStopTimerRef.current = null }
+        setRecording(false)
+      }
+      if (elapsed < minMs) {
+        setTimeout(doStop, minMs - elapsed)
+      } else {
+        doStop()
+      }
       return
     }
     try {
@@ -211,7 +261,7 @@ export default function AllianceChatWindow() {
       ] as const
       let mime = ''
       for (const c of candidates) { if (MediaRecorder.isTypeSupported(c)) { mime = c; break } }
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 96000 } as any : undefined)
       recRef.current = rec
       rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunksRef.current.push(e.data) }
       rec.onerror = () => {
@@ -221,25 +271,16 @@ export default function AllianceChatWindow() {
         if (recordStopTimerRef.current) { window.clearTimeout(recordStopTimerRef.current); recordStopTimerRef.current = null }
         setRecording(false)
         try {
-          const blob = chunksRef.current.length ? new Blob(chunksRef.current, { type: mime || 'audio/webm' }) : null
+          if (chunksRef.current.length === 0) {
+            await waitForChunks(400)
+          }
+          const blob = chunksRef.current.length ? new Blob(chunksRef.current, { type: (mime || 'audio/webm') }) : null
           chunksRef.current = []
           stream.getTracks().forEach((t) => t.stop())
           mediaRef.current = null
-          if (!blob) return
+          if (!blob || blob.size === 0) return
           setTranscribing(true)
-          const b64 = await new Promise<string>((resolve, reject) => {
-            const fr = new FileReader()
-            fr.onerror = () => reject(new Error('read'))
-            fr.onloadend = () => resolve(String(fr.result).split(',')[1] || '')
-            fr.readAsDataURL(blob)
-          })
-          const { data } = await api.post('/ai/transcribe', {
-            audioBase64: b64,
-            mimeType: blob.type || mime || 'audio/webm',
-            fileName: (mime.includes('ogg') ? 'voice.ogg' : 'voice.webm'),
-            sourceLanguage: 'autodetect'
-          })
-          const t: string = data?.text || ''
+          const t: string = await transcribeWithRetry(blob, mime)
           if (t) setMessageText((prev) => (prev ? prev + ' ' + t : t))
         } catch (err) {
           console.error(err)
@@ -248,15 +289,18 @@ export default function AllianceChatWindow() {
         }
       }
       // start with small timeslice so browsers flush data reliably
-      rec.start(250)
+      rec.start(200)
       recordingStartAtRef.current = Date.now()
       setRecording(true)
       recordStopTimerRef.current = window.setTimeout(() => {
         try { rec.requestData() } catch {}
         try { rec.stop() } catch {}
       }, 60000)
-    } catch (e) {
+    } catch (e: any) {
       console.error('mic', e)
+      if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) {
+        try { alert('Microphone permission denied. Please allow mic access and try again.') } catch {}
+      }
       try { mediaRef.current?.getTracks().forEach((t) => t.stop()); mediaRef.current = null } catch {}
       chunksRef.current = []
       setRecording(false)
