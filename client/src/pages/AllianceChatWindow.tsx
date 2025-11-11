@@ -94,6 +94,7 @@ export default function AllianceChatWindow() {
   const sseRef = useRef<EventSource | null>(null)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
+  const typingBarRef = useRef<HTMLDivElement | null>(null)
   const mediaRef = useRef<MediaStream | null>(null)
   const recRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -107,6 +108,7 @@ export default function AllianceChatWindow() {
   const notificationSoundRef = useRef<HTMLAudioElement | null>(null)
   const [sseConnected, setSseConnected] = useState(false)
   const lastSoundPlayedRef = useRef<number>(0)
+  const [kbOffset, setKbOffset] = useState(0)
   // Typing indicator state and timers
   const [typingUsers, setTypingUsers] = useState<Record<string, { email: string; name?: string }>>({})
   const lastTypingSentRef = useRef<number>(0)
@@ -541,6 +543,27 @@ export default function AllianceChatWindow() {
     }
   }, [])
 
+  // Stabilize bottom bar on mobile keyboards using VisualViewport
+  useEffect(() => {
+    const vv = (window as any).visualViewport as VisualViewport | undefined
+    if (!vv) return
+    const onVV = () => {
+      try {
+        const bottom = Math.max(0, Math.round(window.innerHeight - (vv.offsetTop + vv.height)))
+        setKbOffset(bottom)
+        // Adjust message list padding to keep last message visible
+        if (listRef.current && typingBarRef.current) {
+          const barH = typingBarRef.current.offsetHeight || 88
+          listRef.current.style.paddingBottom = `${barH + 16 + bottom}px`
+        }
+      } catch {}
+    }
+    vv.addEventListener('resize', onVV)
+    vv.addEventListener('scroll', onVV)
+    onVV()
+    return () => { vv.removeEventListener('resize', onVV); vv.removeEventListener('scroll', onVV) }
+  }, [])
+
   // Auto-open room when navigated via /alliance-chat/:code
   useEffect(() => {
     async function hydrate(c: string) {
@@ -822,7 +845,7 @@ export default function AllianceChatWindow() {
           )}
 
           {/* Fixed Typing Bar - Positioned at bottom without hiding sidebar */}
-          <div className="absolute bottom-0 left-0 right-0 flex justify-center px-3 md:px-6 pb-safe pb-3 md:pb-4 bg-gradient-to-t from-slate-950 via-slate-950/98 to-transparent pt-4 pointer-events-none z-40">
+          <div ref={typingBarRef} className="absolute left-0 right-0 flex justify-center px-3 md:px-6 pb-safe pb-3 md:pb-4 bg-gradient-to-t from-slate-950 via-slate-950/98 to-transparent pt-4 pointer-events-none z-40" style={{ bottom: kbOffset }}>
             <div className="pointer-events-auto w-full max-w-4xl">
               <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-gradient-to-r from-slate-900/98 via-slate-800/98 to-slate-900/98 backdrop-blur-xl border border-white/20 shadow-2xl px-2.5 md:px-4 py-2 md:py-2.5">
                 {/* Voice Button */}
@@ -851,6 +874,7 @@ export default function AllianceChatWindow() {
                   <Input
                     value={messageText}
                     onChange={(e) => { setMessageText(e.target.value); if (e.target.value.trim()) emitTypingKeepAlive() }}
+                    onFocus={() => { setTimeout(scrollToBottom, 50) }}
                     placeholder={transcribing ? 'Transcribing...' : 'Type a message...'}
                     disabled={transcribing}
                     name="chat-message"
