@@ -259,6 +259,77 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
   }
 })
 
+router.get('/rooms/:code/members', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const code = String(req.params.code)
+    const room = await AllianceRoom.findOne({ code })
+    if (!room) return res.status(404).json({ message: 'Room not found' })
+
+    const membership = await AllianceMembership.findOne({ roomCode: code, userId: req.userId })
+    const isOwner = String(room.createdBy) === String(req.userId)
+
+    if (!membership && !isOwner) {
+      return res.status(403).json({ message: 'Join the room first' })
+    }
+
+    const members = await AllianceMembership.find({ roomCode: code })
+      .sort({ joinedAt: 1 })
+      .populate('userId', 'email gameName')
+      .lean()
+
+    const formatted = members.map((m: any) => {
+      const user = m.userId || {}
+      const email = String(user.email || '')
+      return {
+        userId: String(user._id || m.userId || ''),
+        email: email || 'Unknown',
+        displayName: (user.gameName && String(user.gameName).trim()) || (email ? email.split('@')[0] : 'Alliance member'),
+        role: m.role,
+        joinedAt: m.joinedAt
+      }
+    })
+
+    res.json({
+      room: { ownerId: String(room.createdBy), createdAt: room.createdAt },
+      members: formatted
+    })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to load members' })
+  }
+})
+
+router.delete('/rooms/:code/members/:memberId', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const code = String(req.params.code)
+    const memberId = String(req.params.memberId)
+    if (!Types.ObjectId.isValid(memberId)) return res.status(400).json({ message: 'Invalid member id' })
+
+    const room = await AllianceRoom.findOne({ code })
+    if (!room) return res.status(404).json({ message: 'Room not found' })
+
+    if (String(room.createdBy) !== String(req.userId)) {
+      return res.status(403).json({ message: 'Only the owner can remove members' })
+    }
+
+    const membership = await AllianceMembership.findOne({ roomCode: code, userId: memberId })
+    if (!membership) return res.status(404).json({ message: 'Member not found in this room' })
+    if (membership.role === 'owner') {
+      return res.status(400).json({ message: 'Cannot remove the room owner' })
+    }
+
+    await AllianceMembership.deleteOne({ _id: membership._id })
+
+    broadcastMessage(code, {
+      type: 'member_removed',
+      payload: { userId: memberId }
+    })
+
+    res.json({ ok: true })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to remove member' })
+  }
+})
+
 // Realtime typing indicator (start/keepalive/stop)
 router.post('/rooms/:code/typing', requireAuth, async (req: AuthRequest, res) => {
   try {

@@ -52,6 +52,15 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
+    if (typeof document === 'undefined') return
+    const offset = headerHeight + headerPad
+    document.documentElement.style.setProperty('--dashboard-header-offset', `${offset}px`)
+    return () => {
+      document.documentElement.style.removeProperty('--dashboard-header-offset')
+    }
+  }, [headerHeight, headerPad])
+
+  useEffect(() => {
     const updateHeight = () => {
       if (!headerRef.current) return
       setHeaderHeight(headerRef.current.getBoundingClientRect().height)
@@ -83,7 +92,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col">
       <header
-        className="fixed top-0 right-0 z-40 border-b border-white/10 bg-slate-900/95 backdrop-blur-xl transition-[left,width] duration-300"
+        className="fixed top-0 right-0 z-[120] border-b border-white/10 bg-slate-900/95 backdrop-blur-xl transition-[left,width] duration-300"
         ref={headerRef}
         style={headerStyle}
       >

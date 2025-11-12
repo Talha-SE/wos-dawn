@@ -5,9 +5,11 @@ import api from '../services/api'
 import logo from '../assets/wos-dawn.png'
 import { useAuth } from '../state/AuthContext'
 import notificationMp3 from '../assets/room-message-notification.mp3'
+import { gentlyRequestNotificationPermission, showRoomNotification } from '../utils/notificationClient'
 
 type JoinedRoom = { code: string; name: string; state: number }
 type RoomSummary = { code: string; name: string; state: number; lastMessageAt: string | null }
+type RoomMessagePreview = { content: string; senderName?: string; senderEmail: string; createdAt: string }
 
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }) {
   const { pathname } = useLocation()
@@ -15,6 +17,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const { token, refreshMe, logout } = useAuth()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const lastSoundAtRef = useRef<number>(0)
+  const fetchingPreviewRef = useRef<Record<string, boolean>>({})
+  const previewCacheRef = useRef<Record<string, RoomMessagePreview | undefined>>({})
   const [openRedeem, setOpenRedeem] = useState(true)
   const [openJoined, setOpenJoined] = useState(true)
   const [rooms, setRooms] = useState<JoinedRoom[]>([])
@@ -75,9 +79,39 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             } catch {}
           }
           setLastNotified(s.code, lastTs)
+          gentlyRequestNotificationPermission().catch(() => undefined)
+          notifyRoomInBackground(s, lastTs)
         }
       }
     } catch {}
+  }
+
+  async function notifyRoomInBackground(room: RoomSummary, lastTimestamp: number) {
+    const code = room.code
+    if (fetchingPreviewRef.current[code]) return
+    fetchingPreviewRef.current[code] = true
+    try {
+      let preview: RoomMessagePreview | undefined = previewCacheRef.current[code]
+      const cachedTs = preview ? new Date(preview.createdAt).getTime() : 0
+      if (!preview || cachedTs < lastTimestamp) {
+        const { data } = await api.get<RoomMessagePreview[]>(`/alliance/rooms/${code}/messages`, { params: { limit: 1 } }).catch(() => ({ data: [] as RoomMessagePreview[] }))
+        preview = data && data.length > 0 ? data[data.length - 1] : undefined
+        if (preview) {
+          previewCacheRef.current[code] = preview
+        }
+      }
+
+      await showRoomNotification({
+        roomCode: code,
+        roomName: room.name,
+        senderName: preview?.senderName || preview?.senderEmail,
+        message: preview?.content,
+        roomUrl: `/dashboard/alliance-chat/${code}`,
+        timestamp: lastTimestamp
+      })
+    } finally {
+      fetchingPreviewRef.current[code] = false
+    }
   }
 
   function handleLogout() {
@@ -159,7 +193,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   }, [loadRooms])
 
   return (
-    <aside className={`fixed left-0 top-0 bottom-0 z-40 md:z-20 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-white/10 shadow-2xl transition-all duration-300 ${collapsed ? 'md:w-20' : 'md:w-64'} w-64 transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+    <aside className={`fixed left-0 top-0 bottom-0 z-[160] md:z-20 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-white/10 shadow-2xl transition-all duration-300 ${collapsed ? 'md:w-20' : 'md:w-64'} w-64 transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
       <div className="h-full flex flex-col overflow-hidden">
         <audio ref={audioRef} className="hidden" preload="auto" src={notificationMp3} />
         {/* Header */}

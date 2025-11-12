@@ -4,11 +4,35 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
-import { BookOpenCheck, ChevronLeft, ChevronRight, Mic, Send, X } from 'lucide-react'
+import {
+  BookOpenCheck,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
+  ListChecks,
+  Loader2,
+  Mic,
+  Send,
+  Settings2,
+  ShieldCheck,
+  UserMinus,
+  Users,
+  X
+} from 'lucide-react'
 import notificationMp3 from '../assets/room-message-notification.mp3'
+import { gentlyRequestNotificationPermission, showRoomNotification } from '../utils/notificationClient'
 
 type Room = { code: string; name: string; state: number; isOwner?: boolean }
 type Message = { _id: string; roomCode: string; senderEmail: string; senderId: string; senderName?: string; content: string; createdAt: string }
+
+type AllianceMember = {
+  userId: string
+  email: string
+  displayName: string
+  role: 'owner' | 'member'
+  joinedAt: string
+}
 
 type TutorialSlide = {
   title: string
@@ -113,6 +137,12 @@ export default function AllianceChatWindow() {
   const [typingUsers, setTypingUsers] = useState<Record<string, { email: string; name?: string }>>({})
   const lastTypingSentRef = useRef<number>(0)
   const typingStopTimerRef = useRef<number | null>(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [members, setMembers] = useState<AllianceMember[]>([])
+  const [membersError, setMembersError] = useState<string | null>(null)
+  const [rosterMeta, setRosterMeta] = useState<{ ownerId: string | null; createdAt?: string | null }>({ ownerId: null, createdAt: null })
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
 
   // Generate consistent color for each user based on their email
   function getUserColor(email: string): string {
@@ -146,6 +176,12 @@ export default function AllianceChatWindow() {
     const index = Math.abs(hash) % colors.length
     return colors[index]
   }
+
+  useEffect(() => {
+    if (joined?.code) {
+      gentlyRequestNotificationPermission().catch(() => undefined)
+    }
+  }, [joined?.code])
 
   function scrollToBottom() {
     if (!listRef.current) return
@@ -185,6 +221,20 @@ export default function AllianceChatWindow() {
   }, [showTutorial])
 
   const currentTutorial = tutorialSlides[tutorialIndex]
+
+  useEffect(() => {
+    if (!showSettings || !joined?.code) return
+    loadMembers(joined.code)
+  }, [showSettings, joined?.code])
+
+  useEffect(() => {
+    if (!joined?.code) {
+      setShowSettings(false)
+      setMembers([])
+      setRosterMeta({ ownerId: null, createdAt: null })
+      setMembersError(null)
+    }
+  }, [joined?.code])
 
   async function waitForChunks(timeout = 500) {
     const start = Date.now()
@@ -409,6 +459,41 @@ export default function AllianceChatWindow() {
     }
   }
 
+  async function loadMembers(code: string) {
+    if (!code) return
+    setMembersLoading(true)
+    try {
+      const { data } = await api.get<{
+        room: { ownerId: string | null; createdAt?: string | null }
+        members: AllianceMember[]
+      }>(`/alliance/rooms/${code}/members`)
+      setMembers(Array.isArray(data?.members) ? data.members : [])
+      setRosterMeta({ ownerId: data?.room?.ownerId || null, createdAt: data?.room?.createdAt || null })
+      setMembersError(null)
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Failed to load members'
+      setMembersError(message)
+    } finally {
+      setMembersLoading(false)
+    }
+  }
+
+  async function removeMember(member: AllianceMember) {
+    if (!joined?.code || !joined?.isOwner || member.role === 'owner') return
+    const confirmed = window.confirm(`Remove ${member.displayName || member.email} from this alliance?`)
+    if (!confirmed) return
+    setRemovingMemberId(member.userId)
+    try {
+      await api.delete(`/alliance/rooms/${joined.code}/members/${member.userId}`)
+      setMembers((prev) => prev.filter((m) => m.userId !== member.userId))
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Failed to remove member.'
+      alert(message)
+    } finally {
+      setRemovingMemberId(null)
+    }
+  }
+
   function attachStream(code: string) {
     detachStream()
     const token = localStorage.getItem('token')
@@ -499,6 +584,25 @@ export default function AllianceChatWindow() {
             notificationSoundRef.current.play().catch(() => undefined)
           }
         }
+
+        if (joined?.code === payload.roomCode && payload.senderEmail !== user?.email) {
+          const isForeground = typeof document !== 'undefined' && document.visibilityState === 'visible' && document.hasFocus()
+          if (!isForeground) {
+            const ts = payload.createdAt ? new Date(payload.createdAt).getTime() : Date.now()
+            const timestamp = Number.isFinite(ts) ? ts : Date.now()
+            const senderLabel = payload.senderName && payload.senderName.trim()
+              ? payload.senderName.trim()
+              : (payload.senderEmail || 'Alliance member')
+            void showRoomNotification({
+              roomCode: payload.roomCode,
+              roomName: joined.name,
+              senderName: senderLabel,
+              message: payload.content,
+              roomUrl: `/dashboard/alliance-chat/${payload.roomCode}`,
+              timestamp
+            })
+          }
+        }
         scrollToBottom()
       } else if (data?.type === 'typing' && data.payload) {
         const p = data.payload as { senderId: string; senderEmail: string; typing: boolean }
@@ -510,6 +614,9 @@ export default function AllianceChatWindow() {
           else delete next[p.senderId]
           return next
         })
+      } else if (data?.type === 'member_removed' && data.payload?.userId) {
+        const removedId = String(data.payload.userId)
+        setMembers((prev) => prev.filter((m) => m.userId !== removedId))
       } else if (data?.type === 'message_deleted' && data.payload?._id) {
         const id = data.payload._id as string
         console.log('Removing deleted message:', id)
@@ -680,7 +787,7 @@ export default function AllianceChatWindow() {
       <>
         <audio ref={notificationSoundRef} className="hidden" preload="auto" src={notificationMp3} />
         {/* Fixed full-screen container that prevents content from hiding */}
-        <div className="fixed inset-0 z-30 flex flex-col bg-transparent md:relative md:inset-auto md:z-auto md:bg-transparent md:h-[calc(100vh-160px)]">
+        <div className="fixed left-0 right-0 bottom-0 top-[var(--dashboard-header-offset,3.75rem)] z-30 flex flex-col bg-transparent md:relative md:inset-auto md:top-auto md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:h-[calc(100vh-160px)]">
           {/* Sticky Header Bar - Always visible at top */}
           <div className="flex-none bg-slate-900/95 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
             <div className="flex items-center justify-between gap-3 px-3 py-3 md:px-6 md:py-4">
@@ -713,6 +820,14 @@ export default function AllianceChatWindow() {
                 className="flex-none px-2.5 md:px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-white/80 hover:bg-white/10 transition-all active:scale-95"
               >
                 {showMobileDetails ? 'Hide' : 'Info'}
+              </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="flex-none px-2.5 md:px-3 py-1.5 rounded-lg bg-primary/20 border border-primary/30 text-xs font-medium text-primary-100 hover:bg-primary/25 transition-all active:scale-95 inline-flex items-center gap-1.5"
+                title="Alliance settings"
+              >
+                <Settings2 size={16} />
+                <span className="hidden sm:inline">Settings</span>
               </button>
             </div>
 
@@ -765,6 +880,195 @@ export default function AllianceChatWindow() {
               </div>
             )}
           </div>
+
+          {showSettings && (
+            <div className="fixed inset-0 z-[85] flex items-center justify-center px-4 md:px-6">
+              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowSettings(false)} />
+              <div className="relative w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950/95 via-slate-900/95 to-slate-950/98 shadow-2xl">
+                <div className="flex items-center justify-between px-5 md:px-8 py-4 border-b border-white/10">
+                  <div>
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-primary/70">
+                      <Settings2 size={14} />
+                      Alliance Room
+                    </div>
+                    <h3 className="text-lg md:text-xl font-semibold text-white mt-1">Alliance settings & roster</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettings(false)}
+                    className="rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 transition p-1.5"
+                    aria-label="Close settings"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="grid md:grid-cols-[1.6fr_1fr] gap-4 md:gap-6 px-5 md:px-8 py-5 md:py-6 overflow-y-auto max-h-[90vh]">
+                  <div className="space-y-4 md:space-y-5">
+                    <div className="rounded-2xl border border-white/10 bg-white/5">
+                      <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-5 py-4 border-b border-white/10">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                          <Users size={18} />
+                          Members <span className="text-white/60">({members.length})</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-white/50">
+                          <button
+                            type="button"
+                            onClick={() => joined?.code && loadMembers(joined.code)}
+                            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition"
+                          >
+                            Refresh
+                          </button>
+                          {membersLoading && <Loader2 className="animate-spin" size={16} />}
+                        </div>
+                      </div>
+                      <div className="max-h-80 md:max-h-96 overflow-y-auto px-4 md:px-5 py-4 space-y-3 scrollbar-elegant">
+                        {membersError && (
+                          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                            {membersError}
+                          </div>
+                        )}
+                        {!membersError && members.length === 0 && !membersLoading && (
+                          <div className="rounded-xl border border-dashed border-white/15 bg-white/5 px-4 py-6 text-center text-sm text-white/50">
+                            No members yet. Share your invite link to bring your alliance together.
+                          </div>
+                        )}
+                        {members.map((member) => {
+                          const initials = (member.displayName?.[0] || member.email?.[0] || '?').toUpperCase()
+                          const joinedLabel = member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '—'
+                          const isOwner = member.role === 'owner'
+                          return (
+                            <div
+                              key={member.userId}
+                              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-3 md:px-4 md:py-4"
+                            >
+                              <div className="flex-none h-10 w-10 rounded-full bg-gradient-to-br from-primary/60 to-blue-500/60 text-white font-semibold grid place-items-center shadow-lg">
+                                {initials}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="text-sm md:text-base font-medium text-white truncate" title={member.displayName || member.email}>
+                                    {member.displayName || member.email}
+                                  </div>
+                                  <span
+                                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${
+                                      isOwner ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30' : 'bg-white/10 text-white/60 border border-white/10'
+                                    }`}
+                                  >
+                                    {isOwner ? (
+                                      <>
+                                        <Crown size={12} /> Owner
+                                      </>
+                                    ) : (
+                                      'Member'
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-white/50 truncate" title={member.email}>
+                                  {member.email}
+                                </div>
+                                <div className="mt-1 flex items-center gap-1 text-xs text-white/40">
+                                  <CalendarClock size={12} /> Joined {joinedLabel}
+                                </div>
+                              </div>
+                              {joined?.isOwner && !isOwner && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeMember(member)}
+                                  disabled={removingMemberId === member.userId}
+                                  className="flex-none inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-300 hover:bg-red-500/20 transition"
+                                >
+                                  {removingMemberId === member.userId ? <Loader2 size={14} className="animate-spin" /> : <UserMinus size={14} />}
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4 md:space-y-5">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                        <ShieldCheck size={18} /> Room overview
+                      </div>
+                      <div className="space-y-2 text-sm text-white/60">
+                        <div className="flex items-center justify-between">
+                          <span>Alliance name</span>
+                          <span className="text-white font-medium">{joined.name}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>State</span>
+                          <span className="text-white font-medium">{joined.state}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Room code</span>
+                          <span className="text-white font-mono text-xs md:text-sm">{joined.code}</span>
+                        </div>
+                        {rosterMeta?.createdAt && (
+                          <div className="flex items-center justify-between">
+                            <span>Created</span>
+                            <span className="text-white font-medium">{new Date(rosterMeta.createdAt).toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span>Members</span>
+                          <span className="text-white font-medium">{members.length}</span>
+                        </div>
+                      </div>
+                      <Button variant="subtle" onClick={copyShare} className="w-full text-xs md:text-sm py-2">
+                        Share invite details
+                      </Button>
+                    </div>
+                    {joined?.isOwner ? (
+                      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 md:p-5 space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-amber-200">
+                          <Crown size={18} /> Owner toolkit
+                        </div>
+                        <ul className="space-y-2 text-sm text-amber-100/90">
+                          <li className="flex items-start gap-2">
+                            <ShieldCheck size={14} className="mt-0.5" />
+                            Guard access: remove inactive members and rotate passwords when needed.
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <ListChecks size={14} className="mt-0.5" />
+                            Keep strategy aligned: pin important plans and review chat etiquette regularly.
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Users size={14} className="mt-0.5" />
+                            Nominate co-leads: promote trusted members outside the app to assist with coordination.
+                          </li>
+                        </ul>
+                        <p className="text-xs text-amber-100/70">
+                          You can still access destructive actions like deleting the room from the Info drawer.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:p-5 space-y-3">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                          <ListChecks size={18} /> Member guidelines
+                        </div>
+                        <ul className="space-y-2 text-sm text-white/70">
+                          <li className="flex items-start gap-2">
+                            <ShieldCheck size={14} className="mt-0.5" />
+                            Respect alliance strategy and avoid sharing room credentials externally.
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Users size={14} className="mt-0.5" />
+                            Support teammates by sharing scouting intel and keeping communication active.
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <ListChecks size={14} className="mt-0.5" />
+                            Signal leaders if someone leaves or needs a role change.
+                          </li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Messages Area - Flexible scroll area with bottom padding for input */}
           <div className="relative flex-1 overflow-hidden">
