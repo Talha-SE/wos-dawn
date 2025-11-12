@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, Globe, Search, Check } from 'lucide-react'
 
 type Language = { code: string; label: string }
@@ -67,6 +67,8 @@ const LANGUAGES: Language[] = [
 
 const NONE_OPTION: Language = { code: '__none', label: 'None (Original)' }
 const LANGUAGE_OPTIONS: Language[] = [NONE_OPTION, ...LANGUAGES]
+const GOOGLE_TRANSLATE_OVERLAYS = ['#goog-gt-tt', '.goog-te-banner-frame', '.goog-te-balloon-frame', 'iframe.goog-te-menu-frame']
+const TRANSLATE_CONTAINER_ID = 'google_translate_element_container'
 
 const COUNTRY_TO_LANG: Record<string, string[]> = {
   // Americas
@@ -239,17 +241,55 @@ export default function TranslateSwitcher() {
     return LANGUAGES.find((l) => l.code.toLowerCase() === normalized || normalized.startsWith(l.code.toLowerCase()))
   }
 
-  function clearAllTranslationData() {
+  const getTranslateSelect = () => document.querySelector<HTMLSelectElement>(`#${TRANSLATE_CONTAINER_ID} select`)
+
+  const dispatchSelectChange = (select: HTMLSelectElement) => {
+    const event = new Event('change', { bubbles: true })
+    select.dispatchEvent(event)
+  }
+
+  const initTranslate = useCallback(() => {
+    if (translateInitialized) return
+    if (!window.google?.translate?.TranslateElement) return
+    try {
+      translateInitialized = true
+      new window.google.translate.TranslateElement(
+        {
+          pageLanguage: 'en',
+          includedLanguages: LANGUAGES.map((l) => l.code).join(','),
+          autoDisplay: false
+        },
+        TRANSLATE_CONTAINER_ID
+      )
+      setReady(true)
+    } catch {
+      translateInitialized = false
+    }
+  }, [])
+
+  const initTranslateWithRetry = useCallback((attempt = 0) => {
+    if (translateInitialized) return
+    if (window.google?.translate?.TranslateElement) {
+      initTranslate()
+      return
+    }
+    if (attempt < 6) {
+      window.setTimeout(() => initTranslateWithRetry(attempt + 1), 350)
+    }
+  }, [initTranslate])
+
+  function clearAllTranslationData(options: { preserveDom?: boolean } = {}) {
+    const { preserveDom = false } = options
     // Clear cookies
     clearGoogTransCookies()
-    
+
     // Clear localStorage
     try {
       localStorage.removeItem('wos_manual_lang')
       localStorage.removeItem('wos_geo_cc')
       localStorage.removeItem('wos_geo_cc_ts')
     } catch {}
-    
+
     // Clear sessionStorage if any translation data exists
     try {
       const keys = Object.keys(sessionStorage)
@@ -259,26 +299,65 @@ export default function TranslateSwitcher() {
         }
       })
     } catch {}
-    
+
+    // Clear Cache Storage entries (best-effort)
+    try {
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          keys.forEach((key) => {
+            caches.delete(key).catch(() => undefined)
+          })
+        }).catch(() => undefined)
+      }
+    } catch {}
+
+    // Unregister service workers related to translations (best-effort)
+    try {
+      if (navigator.serviceWorker?.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          regs.forEach((reg) => {
+            if (reg.active?.scriptURL.includes('translate')) {
+              reg.unregister().catch(() => undefined)
+            }
+          })
+        }).catch(() => undefined)
+      }
+    } catch {}
+
+    // Reset resource timings to avoid stale translation responses
+    try {
+      window.performance?.clearResourceTimings?.()
+    } catch {}
+
     // Reset Google Translate element
-    const select = document.querySelector<HTMLSelectElement>('#google_translate_element_container select')
+    const select = getTranslateSelect()
     if (select) {
       select.selectedIndex = 0
-      select.dispatchEvent(new Event('change'))
+      dispatchSelectChange(select)
+    } else if (translateInitialized) {
+      translateInitialized = false
+      setReady(false)
+      initTranslateWithRetry()
     }
-    
+
     // Remove translation classes from body
     document.body.classList.remove('translated-ltr', 'translated-rtl')
     document.documentElement.classList.remove('translated-ltr', 'translated-rtl')
-    
-    // Remove any Google Translate injected elements
-    const gtElements = document.querySelectorAll('[id^="goog-gt-"], .goog-te-banner-frame, .skiptranslate')
+
+    // Remove any Google Translate overlays without destroying the gadget itself
+    const overlaySelectors = preserveDom
+      ? GOOGLE_TRANSLATE_OVERLAYS.filter((selector) => selector !== 'iframe.goog-te-menu-frame')
+      : GOOGLE_TRANSLATE_OVERLAYS
+    const extraSelectors = preserveDom ? [] : ['[id^="goog-gt-"]']
+    const selectors = [...overlaySelectors, ...extraSelectors]
+    const gtElements = selectors.length ? document.querySelectorAll(selectors.join(',')) : []
     gtElements.forEach(el => {
       if (el.parentNode) el.parentNode.removeChild(el)
     })
   }
 
   async function detectAndApply() {
+    clearAllTranslationData({ preserveDom: true })
     const cacheKey = 'wos_geo_cc'
     const tsKey = 'wos_geo_cc_ts'
     const cached = localStorage.getItem(cacheKey)
@@ -320,36 +399,29 @@ export default function TranslateSwitcher() {
   }
 
   useEffect(() => {
-    function initTranslate() {
-      if (translateInitialized || !window.google?.translate?.TranslateElement) return
-      translateInitialized = true
-      new window.google.translate.TranslateElement(
-        {
-          pageLanguage: 'en',
-          includedLanguages: LANGUAGES.map((l) => l.code).join(','),
-          autoDisplay: false
-        },
-        'google_translate_element_container'
-      )
-      setReady(true)
-    }
-
     if (window.google?.translate?.TranslateElement) {
       initTranslate()
-      return
+    } else {
+      if (!document.getElementById('google-translate-script')) {
+        const script = document.createElement('script')
+        script.id = 'google-translate-script'
+        script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'
+        document.body.appendChild(script)
+      }
+
+      window.googleTranslateElementInit = () => {
+        initTranslate()
+      }
+
+      initTranslateWithRetry()
     }
 
-    if (!document.getElementById('google-translate-script')) {
-      const script = document.createElement('script')
-      script.id = 'google-translate-script'
-      script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'
-      document.body.appendChild(script)
+    return () => {
+      if (window.googleTranslateElementInit === initTranslate) {
+        window.googleTranslateElementInit = undefined
+      }
     }
-
-    window.googleTranslateElementInit = () => {
-      initTranslate()
-    }
-  }, [])
+  }, [initTranslate, initTranslateWithRetry])
 
   useEffect(() => {
     if (ready && autoEnabled) detectAndApply()
@@ -373,16 +445,7 @@ export default function TranslateSwitcher() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  function applyLanguage(lang: Language, source: 'manual' | 'auto' = 'manual') {
-    const select = document.querySelector<HTMLSelectElement>('#google_translate_element_container select')
-    if (!select) {
-      setCurrent(lang)
-      setOpen(false)
-      setQuery('')
-      return
-    }
-    
-    // If "None" is selected, completely disable translation
+  function applyLanguage(lang: Language, source: 'manual' | 'auto' = 'manual', attempt = 0) {
     if (lang.code === NONE_OPTION.code) {
       clearAllTranslationData()
       setCurrent(lang)
@@ -393,14 +456,23 @@ export default function TranslateSwitcher() {
       }
       return
     }
-    
+
+    const select = getTranslateSelect()
+    if (!select) {
+      initTranslateWithRetry()
+      if (attempt < 6) {
+        window.setTimeout(() => applyLanguage(lang, source, attempt + 1), 300)
+      }
+      return
+    }
+
     if (fadeTimeout) window.clearTimeout(fadeTimeout)
     document.documentElement.classList.add('translate-fading')
     document.body.classList.add('translate-fading')
-    
+
     select.value = lang.code
-    select.dispatchEvent(new Event('change'))
-    
+    dispatchSelectChange(select)
+
     setCurrent(lang)
     setOpen(false)
     setQuery('')
@@ -428,6 +500,7 @@ export default function TranslateSwitcher() {
       return
     }
     const lang = LANGUAGE_OPTIONS.find((l) => l.code === saved) || NONE_OPTION
+    clearAllTranslationData({ preserveDom: true })
     applyLanguage(lang, 'manual')
   }
 
@@ -445,6 +518,9 @@ export default function TranslateSwitcher() {
         onClick={() => {
           const next = !autoEnabled
           persistAuto(next)
+          if (next) {
+            clearAllTranslationData({ preserveDom: true })
+          }
           if (next && ready) {
             // Turning auto ON - detect and apply
             detectAndApply()
@@ -518,6 +594,7 @@ export default function TranslateSwitcher() {
                         // Reload to ensure completely clean state
                         // no-op
                       } else {
+                        clearAllTranslationData({ preserveDom: true })
                         applyLanguage(lang, 'manual')
                       }
                     }}
