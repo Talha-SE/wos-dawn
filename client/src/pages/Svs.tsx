@@ -3,7 +3,7 @@ import Input from '../components/Input'
 import Button from '../components/Button'
 import api from '../services/api'
 import { useAuth } from '../state/AuthContext'
-import { Clock, ShieldCheck, User as UserIcon, MapPin, CalendarDays, X } from 'lucide-react'
+import { BookOpenCheck, CalendarDays, ChevronLeft, ChevronRight, Clock, ShieldCheck, Sparkles, User as UserIcon, X } from 'lucide-react'
 
 type SlotItem = {
   _id: string
@@ -15,6 +15,56 @@ type SlotItem = {
   assignedPlayerName?: string
   reservedBy: string
 }
+
+type TutorialSlide = {
+  title: string
+  headline: string
+  bullets: string[]
+  accent: string
+}
+
+const tutorialSlides: TutorialSlide[] = [
+  {
+    title: 'Set your battlefield basics',
+    headline: 'Start with your state + alliance',
+    bullets: [
+      'Enter the state number and alliance name so we can pull the right SVS board.',
+      'Pick the UTC date you want to schedule—slots refresh instantly for that day.',
+      'Add your game ID and player name for auto-filled reservations later.'
+    ],
+    accent: 'Prepare'
+  },
+  {
+    title: 'Preview the open timeline',
+    headline: 'Load the grid of 30-minute slots',
+    bullets: [
+      'Tap “Load Slots” and review availability in a color-coded layout.',
+      'Each tile shows the exact UTC window so your team stays aligned.',
+      'Check the alliance label to confirm who already holds a spot.'
+    ],
+    accent: 'Explore'
+  },
+  {
+    title: 'Claim your window',
+    headline: 'Reserve a slot in two taps',
+    bullets: [
+      'Choose an “Available” tile to open the confirmation card.',
+      'Confirm the alliance details and optional duration before submitting.',
+      'Your reserved slot is highlighted and tagged as “Your Slot”.'
+    ],
+    accent: 'Reserve'
+  },
+  {
+    title: 'Stay in control afterwards',
+    headline: 'Cancel or adjust when plans change',
+    bullets: [
+      'Use “Cancel My Reservation” or the X icon on your tile to free the slot.',
+      'The activity panel shows your latest actions and sync status.',
+      'Update your commander profile for auto-filled IDs in future bookings.'
+    ],
+    accent: 'Refine'
+  }
+]
 
 function toDateUTCString(d: Date) {
   const y = d.getUTCFullYear()
@@ -50,6 +100,8 @@ export default function Svs() {
   const [durationBySlot, setDurationBySlot] = useState<Record<number, number>>({})
   const [cancelling, setCancelling] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [tutorialIndex, setTutorialIndex] = useState(0)
 
   useEffect(() => {
     setGameId(user?.gameId || '')
@@ -136,18 +188,75 @@ export default function Svs() {
     })
   }, [cancelConfirmOpen, userReservation])
 
+  useEffect(() => {
+    if (!showTutorial) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setShowTutorial(false)
+        setTutorialIndex(0)
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        setTutorialIndex((idx) => Math.min(idx + 1, tutorialSlides.length - 1))
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        setTutorialIndex((idx) => Math.max(idx - 1, 0))
+      }
+    }
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = originalOverflow
+    }
+  }, [showTutorial])
+
+  const currentTutorial = tutorialSlides[tutorialIndex]
+
+  function openTutorial() {
+    setTutorialIndex(0)
+    setShowTutorial(true)
+  }
+
+  function closeTutorial() {
+    setShowTutorial(false)
+    setTutorialIndex(0)
+  }
+
+  function goNextTutorial() {
+    setTutorialIndex((idx) => (idx < tutorialSlides.length - 1 ? idx + 1 : idx))
+  }
+
+  function goPrevTutorial() {
+    setTutorialIndex((idx) => Math.max(idx - 1, 0))
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto px-3 md:px-4 py-4 md:py-6 space-y-5">
       {/* Header */}
       <div className="glass rounded-2xl px-5 md:px-6 py-5 border border-white/10 shadow-xl bg-gradient-to-br from-slate-900/50 to-slate-950/50 animate-fadeUp">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-            <ShieldCheck size={32} className="text-white" />
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+              <ShieldCheck size={32} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">SVS Scheduler</h1>
+              <p className="text-sm text-white/60 mt-0.5">Manage alliance time slots • All times in UTC</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">SVS Scheduler</h1>
-            <p className="text-sm text-white/60 mt-0.5">Manage alliance time slots • All times in UTC</p>
-          </div>
+          <Button
+            type="button"
+            variant="subtle"
+            onClick={openTutorial}
+            className="inline-flex items-center gap-2 self-start md:self-auto px-3 py-2 text-xs md:text-sm"
+          >
+            <BookOpenCheck size={16} className="hidden md:inline" />
+            SVS tutorial
+          </Button>
         </div>
       </div>
 
@@ -301,6 +410,78 @@ export default function Svs() {
             })}
           </div>
       </section>
+
+      {showTutorial && currentTutorial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 md:px-6">
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={closeTutorial} />
+          <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-white/12 bg-gradient-to-b from-slate-900/95 via-slate-900/90 to-slate-950/95 shadow-2xl animate-in fade-in duration-200">
+            <div className="flex items-center justify-between px-6 md:px-8 pt-6">
+              <div className="text-xs uppercase tracking-[0.3em] text-primary/70 inline-flex items-center gap-2">
+                <Sparkles size={14} /> SVS Playbook
+              </div>
+              <button
+                type="button"
+                onClick={closeTutorial}
+                className="rounded-full border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 transition p-1.5"
+                aria-label="Close tutorial"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="px-6 md:px-8 pt-4 pb-2">
+              <div className="flex items-center gap-3 text-xs text-white/40">
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-white/70">
+                  Step {tutorialIndex + 1} of {tutorialSlides.length}
+                </span>
+                <span className="uppercase tracking-wide text-primary/80">{currentTutorial.accent}</span>
+              </div>
+              <h2 className="mt-4 text-2xl md:text-3xl font-semibold text-white tracking-tight">{currentTutorial.headline}</h2>
+              <p className="mt-2 text-sm md:text-base text-white/70 max-w-2xl">{currentTutorial.title}</p>
+              <ul className="mt-6 space-y-3 text-sm md:text-[15px] text-white/80">
+                {currentTutorial.bullets.map((bullet, idx) => (
+                  <li key={idx} className="flex items-start gap-3">
+                    <span className="mt-1 h-2 w-2 rounded-full bg-primary/70 shadow-[0_0_8px_rgba(59,130,246,0.35)]" />
+                    <span className="leading-relaxed">{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="px-6 md:px-8 pb-6 pt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t border-white/10">
+              <div className="flex items-center gap-2 justify-center md:justify-start">
+                {tutorialSlides.map((_, idx) => (
+                  <span
+                    key={idx}
+                    className={`h-1.5 w-10 rounded-full transition-all ${idx === tutorialIndex ? 'bg-primary shadow-[0_0_16px_rgba(59,130,246,0.6)]' : 'bg-white/15'}`}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={goPrevTutorial}
+                  disabled={tutorialIndex === 0}
+                  className="inline-flex items-center gap-2 text-sm"
+                >
+                  <ChevronLeft size={16} />
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (tutorialIndex === tutorialSlides.length - 1) closeTutorial()
+                    else goNextTutorial()
+                  }}
+                  className="inline-flex items-center gap-2 text-sm"
+                >
+                  {tutorialIndex === tutorialSlides.length - 1 ? 'Done' : 'Next'}
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {confirmOpen && pendingIndex !== null && (
