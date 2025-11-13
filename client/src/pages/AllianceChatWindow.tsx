@@ -787,7 +787,7 @@ export default function AllianceChatWindow() {
       <>
         <audio ref={notificationSoundRef} className="hidden" preload="auto" src={notificationMp3} />
         {/* Fixed full-screen container that prevents content from hiding */}
-        <div className="fixed left-0 right-0 bottom-0 top-[var(--dashboard-header-offset,3.75rem)] z-30 flex flex-col bg-transparent md:relative md:inset-auto md:top-auto md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:h-[calc(100vh-160px)]">
+        <div className="fixed left-0 right-0 bottom-0 top-[calc(var(--dashboard-header-offset,3.75rem)-0.75rem)] z-30 flex flex-col bg-transparent md:relative md:inset-auto md:top-auto md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:h-[calc(100vh-160px)] md:top-[var(--dashboard-header-offset,3.75rem)]">
           {/* Sticky Header Bar - Always visible at top */}
           <div className="flex-none bg-slate-900/95 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
             <div className="flex items-center justify-between gap-3 px-3 py-3 md:px-6 md:py-4">
@@ -1130,7 +1130,9 @@ export default function AllianceChatWindow() {
                             : 'bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 text-white border border-white/15 backdrop-blur-md shadow-lg shadow-violet-500/20 rounded-tl-md'
                         }`}>
                           <div className="flex items-end justify-between gap-3">
-                            <div className="text-[14px] md:text-[15px] leading-relaxed whitespace-pre-wrap break-words flex-1">
+                            <div className={`leading-relaxed whitespace-pre-wrap break-words flex-1 ${
+                              mine ? 'text-[14px] md:text-[15px]' : 'text-[13px] sm:text-[14px] md:text-[15px]'
+                            }`}>
                               {msg.content}
                             </div>
                             <span className={`text-[10px] whitespace-nowrap self-end flex-none ${mine ? 'text-purple-200/70' : 'text-gray-400'}`}>
