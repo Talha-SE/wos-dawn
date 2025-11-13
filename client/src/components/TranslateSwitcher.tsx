@@ -539,7 +539,7 @@ export default function TranslateSwitcher() {
             }
           }
         }}
-        className={`flex items-center gap-2 rounded-full border transition h-10 md:px-2.5 md:py-2 ${autoEnabled ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10'} md:w-auto w-10 justify-center md:justify-start`}
+        className={`flex items-center gap-2 rounded-full border transition h-10 md:px-2.5 md:py-2 ${autoEnabled ? 'bg-emerald-500/20 border-emerald-400/60 text-emerald-300' : 'bg-slate-900/90 border-white/15 text-white/80 hover:text-white hover:bg-slate-800/90'} md:w-auto w-10 justify-center md:justify-start`}
         aria-pressed={autoEnabled}
         title={autoEnabled ? 'Auto-translate enabled' : 'Auto-translate disabled'}
       >
@@ -551,7 +551,7 @@ export default function TranslateSwitcher() {
         <button
           type="button"
           onClick={() => ready && setOpen((v) => !v)}
-          className={`flex items-center gap-2 rounded-full border border-white/10 bg-white/5 transition hover:text-white hover:bg-white/10 h-10 ${!ready ? 'cursor-not-allowed opacity-60' : ''} md:px-3 md:py-2 w-10 md:w-auto justify-center md:justify-start text-white/70`}
+          className={`flex items-center gap-2 rounded-full border border-white/15 bg-slate-900/90 transition hover:text-white hover:bg-slate-800 h-10 ${!ready ? 'cursor-not-allowed opacity-60' : ''} md:px-3 md:py-2 w-10 md:w-auto justify-center md:justify-start text-white/80`}
           aria-haspopup="listbox"
           aria-expanded={open}
         >
@@ -561,20 +561,20 @@ export default function TranslateSwitcher() {
         </button>
 
         {open && ready && (
-          <div className="absolute left-0 md:right-0 md:left-auto mt-2 w-64 rounded-2xl border border-white/10 bg-slate-900/95 shadow-xl backdrop-blur-xl p-2 z-50">
-            <div className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/70">
+          <div className="absolute left-0 md:right-0 md:left-auto mt-2 w-64 rounded-2xl border border-white/15 bg-slate-950 shadow-2xl backdrop-blur-lg p-2 z-50">
+            <div className="flex items-center gap-2 rounded-xl bg-slate-900 border border-white/15 px-3 py-2 text-sm text-white/75">
               <Search size={14} />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search language"
-                className="flex-1 bg-transparent text-white placeholder-white/40 focus:outline-none"
+                className="flex-1 bg-transparent text-white placeholder-white/50 focus:outline-none"
               />
             </div>
-            <ul className="mt-2 max-h-64 overflow-y-auto text-sm text-white/80" role="listbox">
+            <ul className="mt-2 max-h-64 overflow-y-auto text-sm text-white/85" role="listbox">
               {filtered.length === 0 && (
-                <li className="px-3 py-3 text-xs text-white/40">No matches found</li>
+                <li className="px-3 py-3 text-xs text-white/50">No matches found</li>
               )}
               {filtered.map((lang) => (
                 <li key={lang.code}>
@@ -598,7 +598,7 @@ export default function TranslateSwitcher() {
                         applyLanguage(lang, 'manual')
                       }
                     }}
-                    className={`w-full text-left px-3 py-2 rounded-xl transition hover:bg-white/10 ${current.code === lang.code ? 'bg-primary/20 text-primary' : ''}`}
+                    className={`w-full text-left px-3 py-2 rounded-xl transition hover:bg-slate-800/70 ${current.code === lang.code ? 'bg-primary/25 text-primary' : ''}`}
                     role="option"
                     aria-selected={current.code === lang.code}
                   >

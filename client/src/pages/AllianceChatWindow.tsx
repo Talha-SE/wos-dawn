@@ -1071,7 +1071,7 @@ export default function AllianceChatWindow() {
                 </button>
                 
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 top-full mt-2 w-64 rounded-xl bg-slate-900/98 backdrop-blur-xl border border-white/20 shadow-2xl z-[60] overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-xl bg-slate-900 border border-white/20 shadow-2xl z-[60] overflow-hidden">
                     <div className="p-3 border-b border-white/10">
                       <div className="text-xs font-semibold text-white/80 mb-2">Translation Language</div>
                       <div className="flex gap-2">
