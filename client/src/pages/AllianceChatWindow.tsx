@@ -1452,7 +1452,7 @@ export default function AllianceChatWindow() {
                       <div className={`group max-w-[70%] sm:max-w-[60%] md:max-w-[52%] lg:max-w-[45%]`}>
                         {/* Sender label only at start of a block from same sender */}
                         {showSenderLabel && (
-                          <div className={`text-xs font-bold mb-1.5 px-1 drop-shadow-lg ${getUserColor(msg.senderEmail)}`}>
+                          <div className={`text-sm md:text-base font-bold mb-1.5 px-1 drop-shadow-lg ${getUserColor(msg.senderEmail)}`}>
                             {(msg.senderName && msg.senderName.trim()) || msg.senderEmail.split('@')[0]}
                           </div>
                         )}
