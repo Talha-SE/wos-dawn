@@ -310,10 +310,16 @@ export default function ChatAi() {
           )}
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[82%] md:max-w-[60%] rounded-3xl px-4 py-3 md:px-5 md:py-3 shadow-sm space-y-3 ${m.role === 'user' ? 'bg-gradient-to-b from-primary/40 to-primary/25 text-white border border-primary/30' : 'bg-white/10 text-white/90 border border-white/15'}`}>
+              <div
+                className={`notranslate max-w-[82%] md:max-w-[60%] rounded-3xl px-4 py-3 md:px-5 md:py-3 shadow-sm space-y-3 ${m.role === 'user' ? 'bg-gradient-to-b from-primary/40 to-primary/25 text-white border border-primary/30' : 'bg-white/10 text-white/90 border border-white/15'}`}
+                translate="no"
+              >
                 {m.content && (
                   m.role === 'assistant' ? (
-                    <div className="markdown-body text-sm leading-relaxed break-words [&_pre]:bg-black/30 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-xl [&_pre]:p-3 [&_code]:text-[13px] [&_code]:font-mono [&_h1]:text-lg [&_h2]:text-base [&_h1,h2]:font-semibold [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-5 [&_table]:w-full [&_th,td]:border [&_th,td]:border-white/10 [&_th,td]:p-2">
+                    <div
+                      className="notranslate markdown-body text-sm leading-relaxed break-words [&_pre]:bg-black/30 [&_pre]:border [&_pre]:border-white/10 [&_pre]:rounded-xl [&_pre]:p-3 [&_code]:text-[13px] [&_code]:font-mono [&_h1]:text-lg [&_h2]:text-base [&_h1,h2]:font-semibold [&_ul]:list-disc [&_ol]:list-decimal [&_li]:ml-5 [&_table]:w-full [&_th,td]:border [&_th,td]:border-white/10 [&_th,td]:p-2"
+                      translate="no"
+                    >
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
@@ -325,7 +331,7 @@ export default function ChatAi() {
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.content}</div>
+                    <div className="notranslate text-sm leading-relaxed whitespace-pre-wrap break-words" translate="no">{m.content}</div>
                   )
                 )}
                 {m.imageUrls && m.imageUrls.length > 0 && (
@@ -346,7 +352,7 @@ export default function ChatAi() {
           ))}
           {loading && (
             <div className="flex justify-start">
-              <div className="max-w-[60%] rounded-3xl px-4 py-3 bg-white/10 text-white/70 text-sm">
+              <div className="notranslate max-w-[60%] rounded-3xl px-4 py-3 bg-white/10 text-white/70 text-sm" translate="no">
                 Thinking…
               </div>
             </div>
