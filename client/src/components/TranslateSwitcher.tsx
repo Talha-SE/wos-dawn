@@ -1,72 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, Globe, Search, Check } from 'lucide-react'
-
-type Language = { code: string; label: string }
-
-const LANGUAGES: Language[] = [
-  { code: 'en', label: 'English' },
-  { code: 'ar', label: 'العربية (Arabic)' },
-  { code: 'zh-CN', label: '中文 (Simplified Chinese)' },
-  { code: 'zh-TW', label: '中文 (Traditional Chinese)' },
-  { code: 'ja', label: '日本語 (Japanese)' },
-  { code: 'ko', label: '한국어 (Korean)' },
-  { code: 'es', label: 'Español' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'pt', label: 'Português' },
-  { code: 'tr', label: 'Türkçe' },
-  { code: 'vi', label: 'Tiếng Việt' },
-  { code: 'th', label: 'ไทย (Thai)' },
-  { code: 'ms', label: 'Bahasa Melayu' },
-  { code: 'id', label: 'Bahasa Indonesia' },
-  { code: 'pl', label: 'Polski' },
-  { code: 'uk', label: 'Українська' },
-  { code: 'ru', label: 'Русский (Russian)' },
-  { code: 'hi', label: 'हिन्दी (Hindi)' },
-  { code: 'nl', label: 'Nederlands' },
-  { code: 'sv', label: 'Svenska' },
-  { code: 'no', label: 'Norsk' },
-  { code: 'da', label: 'Dansk' },
-  { code: 'fi', label: 'Suomi' },
-  { code: 'cs', label: 'Čeština' },
-  { code: 'hu', label: 'Magyar' },
-  { code: 'ro', label: 'Română' },
-  { code: 'el', label: 'Ελληνικά (Greek)' },
-  { code: 'he', label: 'עברית (Hebrew)' },
-  { code: 'fa', label: 'فارسی (Persian)' },
-  { code: 'bn', label: 'বাংলা (Bengali)' },
-  { code: 'ta', label: 'தமிழ் (Tamil)' },
-  { code: 'mr', label: 'मराठी (Marathi)' },
-  { code: 'gu', label: 'ગુજરાતી (Gujarati)' },
-  { code: 'sw', label: 'Kiswahili' },
-  { code: 'sk', label: 'Slovenčina (Slovak)' },
-  { code: 'bg', label: 'Български (Bulgarian)' },
-  { code: 'am', label: 'አማርኛ (Amharic)' },
-  { code: 'af', label: 'Afrikaans' },
-  { code: 'si', label: 'සිංහල (Sinhala)' },
-  { code: 'az', label: 'Azərbaycan dili (Azerbaijani)' },
-  { code: 'hy', label: 'Հայերեն (Armenian)' },
-  { code: 'ka', label: 'ქართული (Georgian)' },
-  { code: 'kk', label: 'Қазақ тілі (Kazakh)' },
-  { code: 'ky', label: 'Кыргызча (Kyrgyz)' },
-  { code: 'km', label: 'ភាសាខ្មែរ (Khmer)' },
-  { code: 'lo', label: 'ລາວ (Lao)' },
-  { code: 'mn', label: 'Монгол (Mongolian)' },
-  { code: 'my', label: 'မြန်မာစာ (Burmese)' },
-  { code: 'ne', label: 'नेपाली (Nepali)' },
-  { code: 'dv', label: 'ދިވެހި (Dhivehi)' },
-  { code: 'ps', label: 'پښتو (Pashto)' },
-  { code: 'ur', label: 'اردو (Urdu)' },
-  { code: 'tg', label: 'Тоҷикӣ (Tajik)' },
-  { code: 'tk', label: 'Türkmençe (Turkmen)' },
-  { code: 'uz', label: "Oʻzbek tili (Uzbek)" },
-  { code: 'tl', label: 'Filipino (Tagalog)' },
-  { code: 'dz', label: 'རྫོང་ཁ (Dzongkha)' }
-]
-
-const NONE_OPTION: Language = { code: '__none', label: 'None (Original)' }
-const LANGUAGE_OPTIONS: Language[] = [NONE_OPTION, ...LANGUAGES]
+import { LANGUAGES, LANGUAGE_OPTIONS, NONE_OPTION, type LanguageOption } from '../constants/languages'
 const GOOGLE_TRANSLATE_OVERLAYS = ['#goog-gt-tt', '.goog-te-banner-frame', '.goog-te-balloon-frame', 'iframe.goog-te-menu-frame']
 const TRANSLATE_CONTAINER_ID = 'google_translate_element_container'
 
@@ -207,7 +141,7 @@ let fadeTimeout: number | undefined
 export default function TranslateSwitcher() {
   const [open, setOpen] = useState(false)
   const [ready, setReady] = useState(false)
-  const [current, setCurrent] = useState<Language>(NONE_OPTION)
+  const [current, setCurrent] = useState<LanguageOption>(NONE_OPTION)
   const [query, setQuery] = useState('')
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const menuRef = useRef<HTMLDivElement | null>(null)
@@ -235,7 +169,7 @@ export default function TranslateSwitcher() {
     } catch {}
   }
 
-  function findLanguageCandidate(code?: string): Language | undefined {
+  function findLanguageCandidate(code?: string): LanguageOption | undefined {
     if (!code) return undefined
     const normalized = code.toLowerCase()
     return LANGUAGES.find((l) => l.code.toLowerCase() === normalized || normalized.startsWith(l.code.toLowerCase()))
@@ -445,7 +379,7 @@ export default function TranslateSwitcher() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  function applyLanguage(lang: Language, source: 'manual' | 'auto' = 'manual', attempt = 0) {
+  function applyLanguage(lang: LanguageOption, source: 'manual' | 'auto' = 'manual', attempt = 0) {
     if (lang.code === NONE_OPTION.code) {
       clearAllTranslationData()
       setCurrent(lang)

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Input from '../../components/Input'
 import Button from '../../components/Button'
 import api from '../../services/api'
+import { LANGUAGE_OPTIONS } from '../../constants/languages'
 
 type UserRow = {
   _id: string
@@ -23,6 +24,7 @@ type UserRow = {
     avatar_image?: string
     total_recharge_amount: number
   }
+  allianceTranslationLanguage?: string
 }
 
 export default function Users() {
@@ -38,7 +40,8 @@ export default function Users() {
     automationEnabled: false,
     suspended: false,
     suspendedUntil: '',
-    suspensionReason: ''
+    suspensionReason: '',
+    allianceLanguage: ''
   })
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState<{ [key: string]: boolean }>({})
@@ -70,13 +73,14 @@ export default function Users() {
       automationEnabled: user.automationEnabled,
       suspended: user.suspended,
       suspendedUntil: user.suspendedUntil ? user.suspendedUntil.split('T')[0] : '',
-      suspensionReason: (user as any).suspensionReason || ''
+      suspensionReason: (user as any).suspensionReason || '',
+      allianceLanguage: user.allianceTranslationLanguage || ''
     })
   }
 
   function cancelEdit() {
     setEditingId(null)
-    setEditForm({ email: '', password: '', gameId: '', gameName: '', automationEnabled: false, suspended: false, suspendedUntil: '', suspensionReason: '' })
+    setEditForm({ email: '', password: '', gameId: '', gameName: '', automationEnabled: false, suspended: false, suspendedUntil: '', suspensionReason: '', allianceLanguage: '' })
   }
 
   async function saveEdit(userId: string) {
@@ -88,7 +92,8 @@ export default function Users() {
         automationEnabled: editForm.automationEnabled,
         suspended: editForm.suspended,
         suspendedUntil: editForm.suspendedUntil || null,
-        suspensionReason: editForm.suspensionReason || ''
+        suspensionReason: editForm.suspensionReason || '',
+        allianceTranslationLanguage: editForm.allianceLanguage.trim()
       }
       if (editForm.password) payload.password = editForm.password
       await api.put(`/admin/users/${userId}`, payload)
@@ -185,6 +190,22 @@ export default function Users() {
                     placeholder="Reason for suspension..."
                   />
                 </div>
+                <div>
+                  <label className="text-xs text-white/60 mb-1 block">Alliance Translation Language</label>
+                  <Input
+                    list="admin-language-options"
+                    value={editForm.allianceLanguage}
+                    onChange={(e) => setEditForm({ ...editForm, allianceLanguage: e.target.value })}
+                    className="bg-white/10 border-white/20 text-white"
+                    placeholder="e.g. Spanish"
+                  />
+                  <datalist id="admin-language-options">
+                    {LANGUAGE_OPTIONS.filter((lang) => lang.code !== '__none').map((lang) => (
+                      <option key={lang.code} value={lang.label} />
+                    ))}
+                  </datalist>
+                  <p className="text-[11px] text-white/40 mt-1">Leave blank to clear the user preference.</p>
+                </div>
                 <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
                     <input type="checkbox" checked={editForm.automationEnabled} onChange={(e) => setEditForm({ ...editForm, automationEnabled: e.target.checked })} className="rounded" />
@@ -259,6 +280,10 @@ export default function Users() {
                             <span className="text-xs px-2 py-1 rounded bg-white/5 text-white/50 border border-white/10">Regular User</span>
                           )}
                         </div>
+                      </div>
+                      <div>
+                        <div className="text-white/60 text-xs mb-1">Alliance Translation Language</div>
+                        <div className="text-white/80">{user.allianceTranslationLanguage?.trim() ? user.allianceTranslationLanguage : 'None (Original)'}</div>
                       </div>
                     </div>
 

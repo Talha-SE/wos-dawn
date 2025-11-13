@@ -52,7 +52,7 @@ router.get('/users', async (_req, res) => {
   try {
     const users = await User.find()
       .sort({ createdAt: -1 })
-      .select('email passwordHash gameId gameName automationEnabled createdAt updatedAt suspended suspendedUntil isAdmin')
+      .select('email passwordHash gameId gameName automationEnabled createdAt updatedAt suspended suspendedUntil isAdmin allianceTranslationLanguage')
       .lean();
     
     // Import Profile model dynamically
@@ -76,6 +76,7 @@ router.get('/users', async (_req, res) => {
           suspended: (u as any).suspended || false,
           suspendedUntil: (u as any).suspendedUntil || null,
           isAdmin: (u as any).isAdmin || false,
+          allianceTranslationLanguage: (u as any).allianceTranslationLanguage || '',
           createdAt: u.createdAt,
           updatedAt: u.updatedAt,
           profile: profile ? {
@@ -122,7 +123,17 @@ router.get('/stats', async (_req, res) => {
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, password, gameId, gameName, automationEnabled, suspended, suspendedUntil, suspensionReason } = req.body;
+    const { email, password, gameId, gameName, automationEnabled, suspended, suspendedUntil, suspensionReason, allianceTranslationLanguage } = req.body as {
+      email?: string
+      password?: string
+      gameId?: string
+      gameName?: string
+      automationEnabled?: boolean
+      suspended?: boolean
+      suspendedUntil?: string | null
+      suspensionReason?: string
+      allianceTranslationLanguage?: string
+    };
     
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -140,9 +151,10 @@ router.put('/users/:id', async (req, res) => {
     if (typeof suspended === 'boolean') update.suspended = suspended;
     if (suspendedUntil !== undefined) update.suspendedUntil = suspendedUntil ? new Date(suspendedUntil) : null;
     if (suspensionReason !== undefined) update.suspensionReason = suspensionReason;
+    if (allianceTranslationLanguage !== undefined) update.allianceTranslationLanguage = allianceTranslationLanguage?.trim() || '';
 
     const updated = await User.findByIdAndUpdate(id, { $set: update }, { new: true })
-      .select('email gameId gameName automationEnabled suspended suspendedUntil suspensionReason createdAt updatedAt');
+      .select('email gameId gameName automationEnabled suspended suspendedUntil suspensionReason allianceTranslationLanguage createdAt updatedAt');
     
     if (!updated) return res.status(404).json({ message: 'User not found' });
     
