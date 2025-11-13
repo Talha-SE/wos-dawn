@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  Languages,
   ListChecks,
   Loader2,
   Mic,
@@ -144,6 +145,15 @@ export default function AllianceChatWindow() {
   const [rosterMeta, setRosterMeta] = useState<{ ownerId: string | null; createdAt?: string | null }>({ ownerId: null, createdAt: null })
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
 
+  // Translation state
+  const [targetLanguage, setTargetLanguage] = useState('')
+  const [languageInput, setLanguageInput] = useState('')
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
+  const [translations, setTranslations] = useState<Record<string, string>>({}) // messageId -> translated text
+  const [translatingId, setTranslatingId] = useState<string | null>(null)
+  const [pendingTranslations, setPendingTranslations] = useState<Record<string, { retryCount: number; translationId?: string }>>({}) // messageId -> retry info
+  const languageDropdownRef = useRef<HTMLDivElement | null>(null)
+
   // Generate consistent color for each user based on their email
   function getUserColor(email: string): string {
     const colors = [
@@ -176,6 +186,233 @@ export default function AllianceChatWindow() {
     const index = Math.abs(hash) % colors.length
     return colors[index]
   }
+
+  // Translation function with server-side queue
+  async function translateMessage(messageId: string, messageContent: string, retryCount: number = 0) {
+    if (!targetLanguage.trim()) {
+      alert('Please select a target language first from the Languages button in the header.')
+      return
+    }
+    
+    // Check if already translated
+    if (translations[messageId]) {
+      return
+    }
+    
+    setTranslatingId(messageId)
+    
+    try {
+      console.log('Translating message:', { messageId, targetLanguage, retryCount, text: messageContent.substring(0, 50) + '...' })
+      
+      const { data, status } = await api.post('/alliance/translate', {
+        text: messageContent,
+        targetLanguage: targetLanguage.trim(),
+        messageId: messageId,
+        roomCode: joined?.code || ''
+      })
+      
+      // Check if translation is pending (rate limited, added to queue)
+      if (status === 202 && data.status === 'pending') {
+        console.log('Translation queued, will poll for completion...', data)
+        
+        // Store pending status
+        setPendingTranslations(prev => ({
+          ...prev,
+          [messageId]: { 
+            retryCount: retryCount + 1,
+            translationId: data.translationId 
+          }
+        }))
+        
+        // Start polling for completion
+        pollTranslationStatus(messageId, data.translationId, retryCount)
+        
+        return
+      }
+      
+      // Translation completed successfully
+      if (data.translatedText) {
+        console.log('Translation successful:', data.translatedText?.substring(0, 50) + '...')
+        
+        setTranslations(prev => ({
+          ...prev,
+          [messageId]: data.translatedText
+        }))
+        
+        // Clear pending status
+        setPendingTranslations(prev => {
+          const newPending = { ...prev }
+          delete newPending[messageId]
+          return newPending
+        })
+      } else {
+        throw new Error('No translation received from server')
+      }
+    } catch (err: any) {
+      console.error('Translation error:', err)
+      
+      // For errors, show to user
+      const message = err?.response?.data?.message || err?.message || 'Translation failed. Please try again.'
+      if (retryCount === 0) { // Only show error on first attempt
+        alert(`Translation Error: ${message}`)
+      }
+    } finally {
+      setTranslatingId(null)
+    }
+  }
+
+  // Poll for translation completion
+  async function pollTranslationStatus(messageId: string, translationId: string, initialRetryCount: number) {
+    const maxPolls = 60 // Max 60 polls (3 minutes at 3 second intervals)
+    let pollCount = 0
+    
+    const poll = async () => {
+      if (pollCount >= maxPolls) {
+        console.log('Max polls reached for translation:', messageId)
+        setPendingTranslations(prev => {
+          const newPending = { ...prev }
+          delete newPending[messageId]
+          return newPending
+        })
+        return
+      }
+      
+      // Check if already translated (user might have cleared it)
+      if (translations[messageId]) {
+        setPendingTranslations(prev => {
+          const newPending = { ...prev }
+          delete newPending[messageId]
+          return newPending
+        })
+        return
+      }
+      
+      try {
+        const { data } = await api.get(`/alliance/translate/${translationId}/status`)
+        
+        console.log('Translation status poll:', { messageId, status: data.status, retryCount: data.retryCount })
+        
+        // Update pending status with retry count
+        setPendingTranslations(prev => ({
+          ...prev,
+          [messageId]: { 
+            retryCount: data.retryCount || initialRetryCount,
+            translationId 
+          }
+        }))
+        
+        if (data.status === 'completed') {
+          // Translation completed - get the result
+          console.log('Translation completed, fetching result...')
+          
+          if (data.translatedText) {
+            // We have the translation!
+            setTranslations(prev => ({
+              ...prev,
+              [messageId]: data.translatedText
+            }))
+            
+            console.log('Translation received:', data.translatedText.substring(0, 50) + '...')
+          }
+          
+          // Clear pending status
+          setPendingTranslations(prev => {
+            const newPending = { ...prev }
+            delete newPending[messageId]
+            return newPending
+          })
+          
+          return
+          
+        } else if (data.status === 'failed') {
+          console.log('Translation failed:', data.error)
+          setPendingTranslations(prev => {
+            const newPending = { ...prev }
+            delete newPending[messageId]
+            return newPending
+          })
+          if (pollCount === 0) {
+            alert(`Translation failed: ${data.error || 'Unknown error'}`)
+          }
+          return
+        }
+        
+        // Still pending - poll again
+        pollCount++
+        setTimeout(poll, 3000) // Poll every 3 seconds
+        
+      } catch (err: any) {
+        console.error('Error polling translation status:', err)
+        // Continue polling even on error
+        pollCount++
+        if (pollCount < maxPolls) {
+          setTimeout(poll, 3000)
+        } else {
+          setPendingTranslations(prev => {
+            const newPending = { ...prev }
+            delete newPending[messageId]
+            return newPending
+          })
+        }
+      }
+    }
+    
+    // Start polling after 3 seconds
+    setTimeout(poll, 3000)
+  }
+
+  // Load user's saved translation language preference
+  async function loadSavedLanguage() {
+    try {
+      const { data } = await api.get('/alliance/translation-language')
+      if (data.language) {
+        setTargetLanguage(data.language)
+        console.log('Loaded saved translation language:', data.language)
+      }
+    } catch (err: any) {
+      console.error('Error loading saved language:', err)
+    }
+  }
+
+  // Save user's translation language preference
+  async function saveLanguagePreference(language: string) {
+    try {
+      await api.put('/alliance/translation-language', { language })
+      console.log('Saved translation language preference:', language)
+    } catch (err: any) {
+      console.error('Error saving language preference:', err)
+    }
+  }
+
+  // Load saved language on component mount
+  useEffect(() => {
+    loadSavedLanguage()
+  }, [])
+
+  // Save language preference when it changes (debounced)
+  useEffect(() => {
+    if (targetLanguage) {
+      const timeoutId = setTimeout(() => {
+        saveLanguagePreference(targetLanguage)
+      }, 500) // Debounce for 500ms
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [targetLanguage])
+
+  // Close language dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) {
+        setShowLanguageDropdown(false)
+      }
+    }
+    
+    if (showLanguageDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showLanguageDropdown])
 
   useEffect(() => {
     if (joined?.code) {
@@ -821,6 +1058,103 @@ export default function AllianceChatWindow() {
               >
                 {showMobileDetails ? 'Hide' : 'Info'}
               </button>
+              
+              {/* Language Selector Dropdown */}
+              <div className="relative flex-none" ref={languageDropdownRef}>
+                <button
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="flex-none px-2.5 md:px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-xs font-medium text-indigo-200 hover:bg-indigo-500/30 transition-all active:scale-95 inline-flex items-center gap-1.5"
+                  title="Select translation language"
+                >
+                  <Languages size={16} />
+                  <span className="hidden sm:inline">{targetLanguage || 'Translate'}</span>
+                </button>
+                
+                {showLanguageDropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-64 rounded-xl bg-slate-900/98 backdrop-blur-xl border border-white/20 shadow-2xl z-[60] overflow-hidden">
+                    <div className="p-3 border-b border-white/10">
+                      <div className="text-xs font-semibold text-white/80 mb-2">Translation Language</div>
+                      <div className="flex gap-2">
+                        <Input
+                          value={languageInput}
+                          onChange={(e) => setLanguageInput(e.target.value)}
+                          placeholder="Type any language..."
+                          className="text-xs h-9 flex-1"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && languageInput.trim()) {
+                              setTargetLanguage(languageInput.trim())
+                              setShowLanguageDropdown(false)
+                              setLanguageInput('')
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            if (languageInput.trim()) {
+                              setTargetLanguage(languageInput.trim())
+                              setShowLanguageDropdown(false)
+                              setLanguageInput('')
+                            }
+                          }}
+                          disabled={!languageInput.trim()}
+                          className="px-3 py-1 rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-xs text-indigo-200 hover:bg-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Set
+                        </button>
+                      </div>
+                      <div className="text-[10px] text-white/40 mt-1">Press Enter or click Set</div>
+                    </div>
+                    <div className="p-2 max-h-64 overflow-y-auto scrollbar-elegant">
+                      <div className="text-[10px] text-white/40 mb-2 px-2">Quick Select</div>
+                      {['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Russian', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi', 'Urdu', 'Turkish', 'Dutch', 'Polish', 'Vietnamese', 'Thai', 'Indonesian'].map((lang) => (
+                        <button
+                          key={lang}
+                          onClick={() => {
+                            setTargetLanguage(lang)
+                            setShowLanguageDropdown(false)
+                            setLanguageInput('')
+                          }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                            targetLanguage === lang
+                              ? 'bg-indigo-500/30 text-indigo-200 font-medium'
+                              : 'text-white/70 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                      {targetLanguage && !['English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese', 'Russian', 'Chinese', 'Japanese', 'Korean', 'Arabic', 'Hindi', 'Urdu', 'Turkish', 'Dutch', 'Polish', 'Vietnamese', 'Thai', 'Indonesian'].includes(targetLanguage) && (
+                        <div className="mt-2 pt-2 border-t border-white/10">
+                          <div className="text-[10px] text-white/40 mb-2 px-2">Current Selection</div>
+                          <button
+                            onClick={() => {
+                              setShowLanguageDropdown(false)
+                            }}
+                            className="w-full text-left px-3 py-2 rounded-lg text-xs bg-indigo-500/30 text-indigo-200 font-medium"
+                          >
+                            {targetLanguage} (Custom)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {targetLanguage && (
+                      <div className="p-2 border-t border-white/10">
+                        <button
+                          onClick={() => {
+                            setTargetLanguage('')
+                            setTranslations({})
+                            setShowLanguageDropdown(false)
+                          }}
+                          className="w-full px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          Clear Selection
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
               <button
                 onClick={() => setShowSettings(true)}
                 className="flex-none px-2.5 md:px-3 py-1.5 rounded-lg bg-primary/20 border border-primary/30 text-xs font-medium text-primary-100 hover:bg-primary/25 transition-all active:scale-95 inline-flex items-center gap-1.5"
@@ -1097,7 +1431,7 @@ export default function AllianceChatWindow() {
                   const showSenderLabel = !mine && !sameAsPrev
                   
                   return (
-                    <div key={msg._id} className={`flex gap-2 ${mine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}>
+                    <div key={msg._id} className={`flex gap-1.5 ${mine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}>
                       {/* Delete button on LEFT for sent messages (mine) */}
                       {mine && canDelete && (
                         <button
@@ -1115,7 +1449,7 @@ export default function AllianceChatWindow() {
                         </button>
                       )}
                       
-                      <div className={`group max-w-[75%] sm:max-w-[65%] md:max-w-[55%] lg:max-w-[45%]`}>
+                      <div className={`group max-w-[70%] sm:max-w-[60%] md:max-w-[52%] lg:max-w-[45%]`}>
                         {/* Sender label only at start of a block from same sender */}
                         {showSenderLabel && (
                           <div className={`text-xs font-bold mb-1.5 px-1 drop-shadow-lg ${getUserColor(msg.senderEmail)}`}>
@@ -1124,20 +1458,77 @@ export default function AllianceChatWindow() {
                         )}
                         
                         {/* Message bubble */}
-                        <div className={`relative group rounded-2xl px-4 py-3 ${
+                        <div className={`notranslate relative group rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 ${
                           mine
                             ? 'bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/30 rounded-tr-md'
                             : 'bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 text-white border border-white/15 backdrop-blur-md shadow-lg shadow-violet-500/20 rounded-tl-md'
                         }`}>
                           <div className="flex items-end justify-between gap-3">
-                            <div translate="no" className={`leading-relaxed whitespace-pre-wrap break-words flex-1 notranslate ${
-                              mine ? 'text-[14px] md:text-[15px]' : 'text-[13px] sm:text-[14px] md:text-[15px]'
-                            }`}>
-                              {msg.content}
+                            <div className="flex-1 min-w-0">
+                              {/* Original message */}
+                              <div translate="no" className={`notranslate leading-relaxed whitespace-pre-wrap break-words ${
+                                mine ? 'text-[12px] sm:text-[13px] md:text-[15px]' : 'text-[11px] sm:text-[12px] md:text-[14px]'
+                              }`}>
+                                {msg.content}
+                              </div>
+                              
+                              {/* Translated message (if available) */}
+                              {translations[msg._id] && (
+                                <div className="notranslate mt-2 pt-2 border-t border-white/20" translate="no">
+                                  <div className="flex items-center gap-1 mb-1">
+                                    <Languages size={10} className="text-indigo-300" />
+                                    <span className="text-[9px] text-indigo-300 font-medium uppercase tracking-wide">
+                                      {targetLanguage}
+                                    </span>
+                                  </div>
+                                  <div className={`notranslate leading-relaxed whitespace-pre-wrap break-words italic ${
+                                    mine ? 'text-[11px] sm:text-[12px] md:text-[14px] text-blue-100' : 'text-[10px] sm:text-[11px] md:text-[13px] text-white/90'
+                                  }`} translate="no">
+                                    {translations[msg._id]}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <span className={`text-[10px] whitespace-nowrap self-end flex-none ${mine ? 'text-purple-200/70' : 'text-gray-400'}`}>
-                              {time}
-                            </span>
+                            
+                            <div className="flex flex-col items-end gap-1 flex-none">
+                              <span className={`text-[10px] whitespace-nowrap ${mine ? 'text-purple-200/70' : 'text-gray-400'}`}>
+                                {time}
+                              </span>
+                              
+                              {/* Translate button */}
+                              {targetLanguage && (
+                                <button
+                                  type="button"
+                                  onClick={() => translateMessage(msg._id, msg.content)}
+                                  disabled={translatingId === msg._id || !!pendingTranslations[msg._id]}
+                                  className={`w-6 h-6 rounded-full transition-all grid place-items-center relative ${
+                                    translations[msg._id]
+                                      ? 'bg-indigo-500/30 text-indigo-300 hover:bg-indigo-500/40'
+                                      : pendingTranslations[msg._id]
+                                        ? 'bg-yellow-500/20 text-yellow-300 animate-pulse'
+                                        : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                                  } active:scale-95 ${(translatingId === msg._id || pendingTranslations[msg._id]) ? 'cursor-wait' : ''}`}
+                                  title={
+                                    translations[msg._id] 
+                                      ? 'Re-translate' 
+                                      : pendingTranslations[msg._id]
+                                        ? `Retrying... (${pendingTranslations[msg._id].retryCount})`
+                                        : 'Translate'
+                                  }
+                                >
+                                  {translatingId === msg._id ? (
+                                    <div className="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
+                                  ) : pendingTranslations[msg._id] ? (
+                                    <>
+                                      <Languages size={12} />
+                                      <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-ping" />
+                                    </>
+                                  ) : (
+                                    <Languages size={12} />
+                                  )}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>

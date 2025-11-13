@@ -1,11 +1,15 @@
 import { Router, Response } from 'express'
 import { Types } from 'mongoose'
 import bcrypt from 'bcryptjs'
+import axios from 'axios'
 import { requireAuth, AuthRequest } from '../middleware/auth'
 import AllianceRoom from '../models/AllianceRoom'
 import AllianceMembership from '../models/AllianceMembership'
 import AllianceMessage from '../models/AllianceMessage'
+import PendingTranslation from '../models/PendingTranslation'
 import { User } from '../models/User'
+import { getTranslationQueue } from '../services/translationQueue'
+import { subscribeToTranslations } from '../services/translationBroadcast'
 
 const router = Router()
 type Client = { res: Response }
@@ -163,6 +167,266 @@ router.get('/search', requireAuth, async (req, res) => {
     res.json(rooms)
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to search rooms' })
+  }
+})
+
+// Translate message using Mistral AI with retry queue
+router.post('/translate', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { text, targetLanguage, messageId, roomCode } = req.body as { 
+      text: string
+      targetLanguage: string
+      messageId: string
+      roomCode: string
+    }
+    
+    if (!text || !targetLanguage || !messageId) {
+      return res.status(400).json({ message: 'text, targetLanguage, and messageId are required' })
+    }
+
+    const apiKey = process.env.MISTRAL_API_KEY
+    if (!apiKey) {
+      return res.status(500).json({ message: 'MISTRAL_API_KEY not configured' })
+    }
+
+    // Check if there's already a pending/completed translation
+    const existingTranslation = await PendingTranslation.findOne({
+      userId: req.userId,
+      messageId,
+      targetLanguage,
+      status: { $in: ['pending', 'processing'] }
+    })
+
+    if (existingTranslation) {
+      return res.status(202).json({ 
+        message: 'Translation is being processed',
+        status: 'pending',
+        translationId: existingTranslation._id
+      })
+    }
+
+    // Use Mistral AI chat completions API for translation
+    const systemPrompt = `You are a professional translator. Translate the following text to ${targetLanguage}. 
+
+RULES:
+- Automatically detect the source language
+- Preserve formatting, emojis, line breaks, and punctuation exactly
+- Keep URLs, mentions, hashtags unchanged
+- Only return the translated text, nothing else
+- No explanations, no comments, just the translation
+- Maintain the same tone and style
+- If the text is already in ${targetLanguage}, return it as-is`
+
+    try {
+      const { data } = await axios.post(
+        'https://api.mistral.ai/v1/chat/completions',
+        {
+          model: 'mistral-tiny-latest',
+          messages: [
+            {
+              role: 'system',
+              content: systemPrompt
+            },
+            {
+              role: 'user',
+              content: text
+            }
+          ],
+          temperature: 0.3,
+          max_tokens: 2048,
+          top_p: 1
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          timeout: 30000
+        }
+      )
+
+      const translatedText = data?.choices?.[0]?.message?.content?.trim()
+      
+      if (translatedText) {
+        // Success - return immediately
+        return res.json({ translatedText, status: 'completed' })
+      } else {
+        throw new Error('No translation received from API')
+      }
+
+    } catch (apiError: any) {
+      const errorData = apiError?.response?.data
+      const isRateLimitError = 
+        errorData?.type === 'service_tier_capacity_exceeded' ||
+        errorData?.code === '3505' ||
+        apiError?.response?.status === 429 ||
+        errorData?.message?.toLowerCase().includes('capacity') ||
+        errorData?.message?.toLowerCase().includes('rate limit')
+
+      console.log('Translation API error:', {
+        type: errorData?.type,
+        code: errorData?.code,
+        message: errorData?.message,
+        isRateLimitError
+      })
+
+      if (isRateLimitError) {
+        // Create pending translation for retry and add to queue
+        const pendingTranslation = await PendingTranslation.findOneAndUpdate(
+          {
+            userId: req.userId,
+            messageId,
+            targetLanguage
+          },
+          {
+            $set: {
+              messageContent: text,
+              roomCode: roomCode || '',
+              status: 'pending',
+              lastAttempt: new Date(),
+              error: errorData?.message || 'Rate limit exceeded'
+            },
+            $inc: { retryCount: 1 },
+            $setOnInsert: { createdAt: new Date() }
+          },
+          { upsert: true, new: true }
+        )
+
+        // Add to processing queue
+        const queue = getTranslationQueue()
+        await queue.addToQueue({
+          translationId: String(pendingTranslation._id),
+          userId: String(req.userId),
+          messageId,
+          messageContent: text,
+          targetLanguage,
+          retryCount: pendingTranslation.retryCount,
+          priority: Date.now() // FIFO - end of queue
+        })
+
+        console.log(`Translation queued: ${pendingTranslation._id}, Queue size: ${queue.getQueueSize()}`)
+
+        // Return pending status - client will poll for completion
+        return res.status(202).json({ 
+          message: 'Translation queued due to rate limit',
+          status: 'pending',
+          translationId: pendingTranslation._id,
+          queueSize: queue.getQueueSize(),
+          retryAfter: 3000
+        })
+      } else {
+        // Other errors - throw to be caught by outer catch
+        throw apiError
+      }
+    }
+
+  } catch (err: any) {
+    console.error('Translation error:', err?.response?.data || err?.message)
+    const errorMessage = err?.response?.data?.message || err?.message || 'Translation failed'
+    res.status(500).json({ 
+      message: errorMessage,
+      status: 'failed',
+      details: err?.response?.data 
+    })
+  }
+})
+
+// Check translation status
+router.get('/translate/:translationId/status', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const translation = await PendingTranslation.findOne({
+      _id: req.params.translationId,
+      userId: req.userId
+    })
+
+    if (!translation) {
+      return res.status(404).json({ message: 'Translation not found' })
+    }
+
+    const queue = getTranslationQueue()
+
+    res.json({
+      status: translation.status,
+      retryCount: translation.retryCount,
+      error: translation.error,
+      lastAttempt: translation.lastAttempt,
+      queueSize: queue.getQueueSize(),
+      translatedText: translation.translatedText, // Include the result if completed
+      messageId: translation.messageId,
+      targetLanguage: translation.targetLanguage
+    })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to check status' })
+  }
+})
+
+// Get queue status (for monitoring)
+router.get('/translate-queue/status', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const queue = getTranslationQueue()
+    const status = queue.getQueueStatus()
+    
+    // Get user's pending translations
+    const userPending = await PendingTranslation.find({
+      userId: req.userId,
+      status: 'pending'
+    }).select('messageId targetLanguage retryCount createdAt').lean()
+
+    res.json({
+      queue: status,
+      userPending
+    })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to get queue status' })
+  }
+})
+
+// Get user's preferred alliance translation language
+router.get('/translation-language', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const user = await User.findById(req.userId).select('allianceTranslationLanguage')
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    res.json({ 
+      language: user.allianceTranslationLanguage || ''
+    })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to get language preference' })
+  }
+})
+
+// Update user's preferred alliance translation language
+router.put('/translation-language', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const { language } = req.body as { language: string }
+    
+    // Validate language (allow empty string to clear)
+    if (language !== undefined && typeof language !== 'string') {
+      return res.status(400).json({ message: 'Language must be a string' })
+    }
+
+    // Update user's language preference
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { allianceTranslationLanguage: language?.trim() || '' },
+      { new: true }
+    ).select('allianceTranslationLanguage')
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+
+    console.log(`User ${req.userId} updated alliance translation language to: ${language || '(cleared)'}`)
+
+    res.json({ 
+      language: user.allianceTranslationLanguage || '',
+      message: 'Language preference updated successfully'
+    })
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Failed to update language preference' })
   }
 })
 

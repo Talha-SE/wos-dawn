@@ -11,6 +11,7 @@ export interface IUser extends Document {
   suspendedUntil?: Date;
   suspensionReason?: string;
   isAdmin: boolean;
+  allianceTranslationLanguage?: string; // User's preferred translation language for alliance chat
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,7 +27,8 @@ const UserSchema = new Schema<IUser>(
     suspended: { type: Boolean, default: false, index: true },
     suspendedUntil: { type: Date },
     suspensionReason: { type: String, maxlength: 500 },
-    isAdmin: { type: Boolean, default: false }
+    isAdmin: { type: Boolean, default: false },
+    allianceTranslationLanguage: { type: String, default: '' } // Preferred translation language
   },
   { timestamps: true }
 );

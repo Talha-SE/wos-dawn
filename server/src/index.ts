@@ -15,6 +15,8 @@ import notificationRoutes from './routes/notification';
 import { startAutoRedeemCron } from './cron/autoRedeem';
 import { startSlotResetCron } from './cron/resetSlots';
 import { startMessageCleanupCron } from './cron/cleanOldMessages';
+import { startTranslationCleanup } from './cron/cleanOldTranslations';
+import { initializeTranslationQueue } from './services/translationQueue';
 
 async function bootstrap() {
   await connectDB();
@@ -46,10 +48,14 @@ async function bootstrap() {
     console.log(`Server running on http://localhost:${env.PORT}`);
   });
 
+  // Initialize translation queue (loads pending translations)
+  await initializeTranslationQueue();
+
   if (env.ENABLE_CRON) {
     startAutoRedeemCron();
     startSlotResetCron();
     startMessageCleanupCron();
+    startTranslationCleanup();
   }
 
   return server;
