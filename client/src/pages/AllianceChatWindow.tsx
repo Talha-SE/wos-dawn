@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/Button'
 import Input from '../components/Input'
@@ -9,16 +9,13 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
-  Info,
   Crown,
   ListChecks,
   Loader2,
   Mic,
   Send,
-  Share2,
   Settings2,
   ShieldCheck,
-  Sparkles,
   UserMinus,
   Users,
   X
@@ -42,53 +39,6 @@ type TutorialSlide = {
   headline: string
   bullets: string[]
   accent?: string
-}
-
-type HeaderStat = {
-  label: string
-  value: string
-  subtle?: string
-  mono?: boolean
-}
-
-function formatActivityLabel(dateStr?: string) {
-  if (!dateStr) return 'Awaiting activity'
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return 'Awaiting activity'
-  const now = new Date()
-  const sameDay = date.toDateString() === now.toDateString()
-  const yesterday = new Date(now.getTime())
-  yesterday.setDate(now.getDate() - 1)
-
-  const dayLabel = sameDay
-    ? 'Today'
-    : date.toDateString() === yesterday.toDateString()
-      ? 'Yesterday'
-      : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-  const timeLabel = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  return `${dayLabel} • ${timeLabel}`
-}
-
-function formatCreatedLabel(dateStr?: string | null) {
-  if (!dateStr) return '—'
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return '—'
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function getRoomInitials(name?: string | null) {
-  if (!name) return 'AL'
-  const trimmed = name.trim()
-  if (!trimmed) return 'AL'
-  const parts = trimmed.split(/\s+/).slice(0, 2)
-  const letters = parts.map((part) => part.charAt(0).toUpperCase()).filter(Boolean)
-  if (letters.length >= 2) return letters.join('')
-  if (letters.length === 1) {
-    const second = trimmed.replace(parts[0], '').trim().charAt(0)
-    if (second) return (letters[0] + second.toUpperCase()).slice(0, 2)
-    return (letters[0] + (trimmed.charAt(1)?.toUpperCase() || '')).slice(0, 2)
-  }
-  return trimmed.slice(0, 2).toUpperCase()
 }
 
 const tutorialSlides: TutorialSlide[] = [
@@ -154,7 +104,6 @@ export default function AllianceChatWindow() {
   const [deleting, setDeleting] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [copied, setCopied] = useState(false)
-  const [codeCopied, setCodeCopied] = useState(false)
   const [showMobileDetails, setShowMobileDetails] = useState(false)
 
   const [q, setQ] = useState('')
@@ -272,46 +221,6 @@ export default function AllianceChatWindow() {
   }, [showTutorial])
 
   const currentTutorial = tutorialSlides[tutorialIndex]
-  const lastMessage = useMemo(() => (messages.length > 0 ? messages[messages.length - 1] : null), [messages])
-  const roomInitials = useMemo(() => getRoomInitials(joined?.name), [joined?.name])
-  const headerStats = useMemo<HeaderStat[]>(() => {
-    if (!joined) return []
-    const stats: HeaderStat[] = []
-    stats.push({
-      label: 'Role',
-      value: joined.isOwner ? 'Commander' : 'Member',
-      subtle: joined.isOwner ? 'Full control' : 'Alliance access'
-    })
-    stats.push({
-      label: 'State',
-      value: `#${joined.state}`,
-      subtle: 'Battlefield',
-      mono: true
-    })
-    stats.push({
-      label: 'Members',
-      value: members.length ? String(members.length) : '—',
-      subtle: members.length ? 'Active roster' : 'Waiting to join'
-    })
-    const activitySource = lastMessage?.createdAt || rosterMeta?.createdAt || null
-    if (activitySource) {
-      stats.push({
-        label: 'Last activity',
-        value: formatActivityLabel(activitySource)
-      })
-    }
-    if (rosterMeta?.createdAt) {
-      const createdLabel = formatCreatedLabel(rosterMeta.createdAt)
-      stats.push({
-        label: 'Created',
-        value: createdLabel
-      })
-    }
-    return stats.slice(0, 4)
-  }, [joined, members.length, rosterMeta?.createdAt, lastMessage?.createdAt])
-  const statusTone = sseConnected ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200' : 'bg-red-500/15 border-red-400/40 text-red-200'
-  const statusPulse = sseConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'
-  const statusLabel = sseConnected ? 'Live' : 'Reconnecting…'
 
   useEffect(() => {
     if (!showSettings || !joined?.code) return
@@ -500,12 +409,6 @@ export default function AllianceChatWindow() {
     const id = window.setTimeout(() => setCopied(false), 2000)
     return () => window.clearTimeout(id)
   }, [copied])
-
-  useEffect(() => {
-    if (!codeCopied) return
-    const id = window.setTimeout(() => setCodeCopied(false), 1600)
-    return () => window.clearTimeout(id)
-  }, [codeCopied])
 
   function copyShare() {
     if (!joined) return
@@ -885,141 +788,93 @@ export default function AllianceChatWindow() {
         <audio ref={notificationSoundRef} className="hidden" preload="auto" src={notificationMp3} />
         {/* Fixed full-screen container that prevents content from hiding */}
         <div className="fixed left-0 right-0 bottom-0 top-[var(--dashboard-header-offset,3.75rem)] z-30 flex flex-col bg-transparent md:relative md:inset-auto md:top-auto md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:h-[calc(100vh-160px)]">
-          {/* Header */}
-          <div className="relative flex-none bg-slate-950/90 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-50 overflow-hidden">
-            <div className="absolute inset-0 opacity-40">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.35),transparent_55%)]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(147,51,234,0.18),transparent_50%)]" />
-            </div>
-            <div className="relative px-3 py-3 md:px-6 md:py-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <button
-                      onClick={() => {
-                        setJoined(null)
-                        nav('/dashboard/alliance-chat')
-                      }}
-                      className="flex-none p-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 hover:text-white transition-all active:scale-95"
-                      title="Leave room"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-none h-12 w-12 md:h-14 md:w-14 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-500 to-purple-600 shadow-lg shadow-blue-500/40 grid place-items-center text-lg font-semibold text-white">
-                        {roomInitials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center flex-wrap gap-2">
-                          <h2 className="text-base md:text-lg font-semibold text-white tracking-tight truncate">{joined.name}</h2>
-                          <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${statusTone}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${statusPulse}`} />
-                            <span className="hidden sm:inline">{statusLabel}</span>
-                            <span className="sm:hidden">{sseConnected ? 'On' : 'Off'}</span>
-                          </div>
-                        </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/60">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(joined.code).then(() => setCodeCopied(true))
-                            }}
-                            className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition"
-                          >
-                            <span className="font-mono text-white/80">{joined.code}</span>
-                            <Share2 size={12} />
-                          </button>
-                          <span>•</span>
-                          <span className="font-medium text-white/80">State #{joined.state}</span>
-                          {currentPassword && (
-                            <span className="hidden sm:inline text-white/50">
-                              Password stored
-                            </span>
-                          )}
-                        </div>
-                      </div>
+          {/* Sticky Header Bar - Always visible at top */}
+          <div className="flex-none bg-slate-900/95 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
+            <div className="flex items-center justify-between gap-3 px-3 py-3 md:px-6 md:py-4">
+              <div className="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+                <button
+                  onClick={() => {
+                    setJoined(null)
+                    nav('/dashboard/alliance-chat')
+                  }}
+                  className="flex-none p-1.5 md:p-2 rounded-full hover:bg-white/10 transition-colors text-white/70 hover:text-white active:scale-95"
+                  title="Leave room"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm md:text-base font-semibold text-white truncate">{joined.name}</h2>
+                    {/* Connection Status Indicator */}
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium whitespace-nowrap ${sseConnected ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${sseConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+                      <span className="hidden sm:inline">{sseConnected ? 'Live' : 'Reconnecting...'}</span>
+                      <span className="inline sm:hidden">{sseConnected ? 'Live' : '...'}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowMobileDetails((v) => !v)}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white/70 hover:bg-white/10 hover:text-white transition-all active:scale-95"
-                    >
-                      <Info size={14} /> {showMobileDetails ? 'Hide' : 'Info'}
-                    </button>
-                    <Button
-                      type="button"
-                      variant="subtle"
-                      onClick={() => setShowSettings(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-xs md:text-sm"
-                      title="Alliance settings"
-                    >
-                      <Settings2 size={16} />
-                      <span className="hidden sm:inline">Settings</span>
-                    </Button>
-                  </div>
-                </div>
-                <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-                  {headerStats.map((stat) => (
-                    <div key={stat.label} className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
-                      <div className="text-[11px] uppercase tracking-[0.2em] text-white/40">{stat.label}</div>
-                      <div className={`mt-1 text-sm font-semibold text-white ${stat.mono ? 'font-mono tracking-wide text-white/90' : ''}`}>{stat.value}</div>
-                      {stat.subtle && <div className="text-[11px] text-white/40 mt-1">{stat.subtle}</div>}
-                    </div>
-                  ))}
+                  <p className="text-xs text-white/50 truncate">State {joined.state} • {joined.code}</p>
                 </div>
               </div>
+              <button
+                onClick={() => setShowMobileDetails((v) => !v)}
+                className="flex-none px-2.5 md:px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-medium text-white/80 hover:bg-white/10 transition-all active:scale-95"
+              >
+                {showMobileDetails ? 'Hide' : 'Info'}
+              </button>
+              <button
+                onClick={() => setShowSettings(true)}
+                className="flex-none px-2.5 md:px-3 py-1.5 rounded-lg bg-primary/20 border border-primary/30 text-xs font-medium text-primary-100 hover:bg-primary/25 transition-all active:scale-95 inline-flex items-center gap-1.5"
+                title="Alliance settings"
+              >
+                <Settings2 size={16} />
+                <span className="hidden sm:inline">Settings</span>
+              </button>
             </div>
 
-            {/* Info Panel (collapsible) */}
+
+            {/* Info Panel (collapsible) - Inside sticky header */}
             {showMobileDetails && (
-              <div className="relative px-3 pb-4 md:px-6 md:pb-6">
-                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 md:p-5 space-y-4">
-                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-white/50">
-                    Room Access
-                  </div>
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                      <div className="text-[11px] text-white/40 mb-1 uppercase tracking-widest">Code</div>
-                      <div className="font-mono text-sm text-white truncate">{joined.code}</div>
+              <div className="px-3 pb-3 md:px-6 md:pb-4 animate-in slide-in-from-top duration-200">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3 md:p-4 space-y-3">
+                  <div className="text-xs font-semibold text-white/80">Room Access</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-slate-950/50 rounded-lg p-2 border border-white/5">
+                      <div className="text-[10px] text-white/40 mb-1">Code</div>
+                      <div className="font-mono text-xs text-white truncate">{joined.code}</div>
                     </div>
-                    <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                      <div className="text-[11px] text-white/40 mb-1 uppercase tracking-widest">Password</div>
-                      <div className="font-mono text-sm text-white/80">{currentPassword ? '•'.repeat(6) : 'Ask owner'}</div>
-                    </div>
-                    <div className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                      <div className="text-[11px] text-white/40 mb-1 uppercase tracking-widest">Share link</div>
-                      <button
-                        type="button"
-                        onClick={copyShare}
-                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/70 hover:text-white hover:bg-white/10 transition"
-                      >
-                        {copied ? '✓ Copied!' : 'Copy invite'}
-                        <Share2 size={12} />
-                      </button>
+                    <div className="bg-slate-950/50 rounded-lg p-2 border border-white/5">
+                      <div className="text-[10px] text-white/40 mb-1">Password</div>
+                      <div className="font-mono text-xs text-white">{currentPassword ? '•'.repeat(6) : 'Ask owner'}</div>
                     </div>
                   </div>
+                  <Button variant="subtle" onClick={copyShare} className="w-full text-xs py-2">
+                    {copied ? '✓ Copied!' : 'Copy Invite'}
+                  </Button>
+                  
                   {joined?.isOwner && (
-                    <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-3">
-                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-amber-200">
-                        Owner Controls
+                    <>
+                      <div className="border-t border-white/10 pt-3 mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                          <div className="text-xs font-semibold text-red-400">Owner Controls</div>
+                        </div>
+                        <Input
+                          value={deletePwd}
+                          onChange={(e) => setDeletePwd(e.target.value)}
+                          placeholder="Password to delete"
+                          type="password"
+                          className="text-xs bg-slate-950/50 h-9 mb-2"
+                        />
+                        <Button
+                          variant="danger"
+                          onClick={onDeleteRoom}
+                          disabled={!deletePwd.trim() || deleting}
+                          className="w-full text-xs py-2"
+                        >
+                          {deleting ? 'Deleting...' : 'Delete Room'}
+                        </Button>
                       </div>
-                      <Input
-                        value={deletePwd}
-                        onChange={(e) => setDeletePwd(e.target.value)}
-                        placeholder="Password to delete"
-                        type="password"
-                        className="text-sm bg-white/5 border-white/10"
-                      />
-                      <Button
-                        variant="danger"
-                        onClick={onDeleteRoom}
-                        disabled={!deletePwd.trim() || deleting}
-                        className="w-full text-sm"
-                      >
-                        {deleting ? 'Deleting…' : 'Delete Room'}
-                      </Button>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -1410,15 +1265,6 @@ export default function AllianceChatWindow() {
             </div>
           </div>
         </div>
-
-        {codeCopied && (
-          <div className="pointer-events-none fixed inset-x-0 top-[calc(var(--dashboard-header-offset,60px)+16px)] flex justify-center z-[55] animate-in fade-in slide-in-from-top duration-200">
-            <div className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/15 bg-slate-900/90 px-3 py-1.5 text-xs font-medium text-white/70 shadow-lg shadow-blue-500/20">
-              <Sparkles size={14} className="text-primary" />
-              Room code copied
-            </div>
-          </div>
-        )}
       </>
     )
   }
