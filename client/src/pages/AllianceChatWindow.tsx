@@ -1130,7 +1130,7 @@ export default function AllianceChatWindow() {
                             : 'bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 text-white border border-white/15 backdrop-blur-md shadow-lg shadow-violet-500/20 rounded-tl-md'
                         }`}>
                           <div className="flex items-end justify-between gap-3">
-                            <div className={`leading-relaxed whitespace-pre-wrap break-words flex-1 ${
+                            <div translate="no" className={`leading-relaxed whitespace-pre-wrap break-words flex-1 notranslate ${
                               mine ? 'text-[14px] md:text-[15px]' : 'text-[13px] sm:text-[14px] md:text-[15px]'
                             }`}>
                               {msg.content}
