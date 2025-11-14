@@ -86,6 +86,9 @@ const tutorialSlides: TutorialSlide[] = [
   }
 ]
 
+const ALLIANCE_ROOMS_CACHE_KEY = 'wos_alliance_joined_rooms_v1'
+const ALLIANCE_MESSAGES_CACHE_PREFIX = 'wos_alliance_room_messages_v1_'
+
 export default function AllianceChatWindow() {
   const { user } = useAuth()
   const nav = useNavigate()
@@ -201,6 +204,10 @@ export default function AllianceChatWindow() {
     return new Date(ts).toLocaleDateString()
   }
 
+  function getMessagesCacheKey(code: string): string {
+    return `${ALLIANCE_MESSAGES_CACHE_PREFIX}${code}`
+  }
+
   const loadJoinedRooms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!user) {
       setJoinedRooms([])
@@ -223,6 +230,11 @@ export default function AllianceChatWindow() {
       }))
       setJoinedRooms(merged)
       setJoinedRoomsError(null)
+      try {
+        localStorage.setItem(ALLIANCE_ROOMS_CACHE_KEY, JSON.stringify(merged))
+      } catch {
+        // ignore cache write errors
+      }
     } catch (err: any) {
       const message = err?.response?.data?.message || 'Unable to load your rooms'
       setJoinedRoomsError(message)
@@ -230,6 +242,21 @@ export default function AllianceChatWindow() {
       if (!silent) setJoinedRoomsLoading(false)
     }
   }, [user])
+
+  // Hydrate joined rooms from cache for instant display
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ALLIANCE_ROOMS_CACHE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as JoinedRoomSummary[]
+      if (Array.isArray(parsed)) {
+        setJoinedRooms(parsed)
+        setJoinedRoomsError(null)
+      }
+    } catch {
+      // ignore cache errors
+    }
+  }, [])
 
   useEffect(() => {
     loadJoinedRooms()
@@ -300,9 +327,23 @@ export default function AllianceChatWindow() {
       return
     }
     
-    // Check if already translated
-    if (translations[messageId]) {
+    // If translation is already pending for this message, avoid spamming duplicate requests
+    if (pendingTranslations[messageId] && !translations[messageId]) {
       return
+    }
+
+    // If a translation already exists, allow re-translation by clearing the previous result first
+    if (translations[messageId]) {
+      setTranslations((prev) => {
+        const next = { ...prev }
+        delete next[messageId]
+        return next
+      })
+      setPendingTranslations((prev) => {
+        const next = { ...prev }
+        delete next[messageId]
+        return next
+      })
     }
     
     setTranslatingId(messageId)
@@ -767,6 +808,7 @@ export default function AllianceChatWindow() {
       setJoined(data)
       setShowDelete(false)
       setCurrentPassword(joinPassword)
+      hydrateMessagesFromCache(data.code)
       await loadMessages(data.code)
       try { localStorage.setItem(`wos_room_seen_${data.code}`, String(Date.now())); window.dispatchEvent(new Event('alliance:rooms-refresh')) } catch {}
       attachStream(data.code)
@@ -791,10 +833,29 @@ export default function AllianceChatWindow() {
     }
   }
 
+  function hydrateMessagesFromCache(code: string) {
+    try {
+      const raw = localStorage.getItem(getMessagesCacheKey(code))
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Message[]
+      if (Array.isArray(parsed)) {
+        setMessages(parsed)
+        scrollToBottom()
+      }
+    } catch {
+      // ignore cache errors
+    }
+  }
+
   async function loadMessages(code: string) {
     try {
       const { data } = await api.get<Message[]>(`/alliance/rooms/${code}/messages`)
       setMessages(data)
+      try {
+        localStorage.setItem(getMessagesCacheKey(code), JSON.stringify(data))
+      } catch {
+        // ignore cache write errors
+      }
       scrollToBottom()
       try { localStorage.setItem(`wos_room_seen_${code}`, String(Date.now())); window.dispatchEvent(new Event('alliance:rooms-refresh')) } catch {}
     } catch {
@@ -841,7 +902,7 @@ export default function AllianceChatWindow() {
     detachStream()
     const token = localStorage.getItem('token')
     const base = (api.defaults.baseURL || '').replace(/\/$/, '') || '/api'
-    const streamUrl = `${base}/alliance/rooms/${code}/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`
+    const streamUrl = `${base}/alliance/rooms/${code}/stream${token ? '?token=' + encodeURIComponent(token) : ''}`
     console.log('Connecting to SSE stream:', streamUrl)
     const source = new EventSource(streamUrl)
     
@@ -906,6 +967,13 @@ export default function AllianceChatWindow() {
           const filtered = prev.filter((m) => !(m._id.startsWith('temp-') && m.content === payload.content && m.senderEmail === payload.senderEmail))
           const newMessages = [...filtered, payload]
           console.log('Messages after update:', newMessages.length)
+          try {
+            if (payload.roomCode) {
+              localStorage.setItem(getMessagesCacheKey(payload.roomCode), JSON.stringify(newMessages))
+            }
+          } catch {
+            // ignore cache write errors
+          }
           return newMessages
         })
         
@@ -944,6 +1012,11 @@ export default function AllianceChatWindow() {
               roomUrl: `/dashboard/alliance-chat/${payload.roomCode}`,
               timestamp
             })
+          }
+
+          // Auto-translate new incoming messages when a target language is selected
+          if (targetLanguage.trim()) {
+            translateMessage(payload._id, payload.content)
           }
         }
         scrollToBottom()
@@ -1069,6 +1142,7 @@ export default function AllianceChatWindow() {
           setTab('join')
           setJoinCode(c)
           setCurrentPassword('')
+          hydrateMessagesFromCache(c)
           await loadMessages(c)
           attachStream(c)
         } else {

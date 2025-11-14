@@ -11,6 +11,9 @@ type JoinedRoom = { code: string; name: string; state: number }
 type RoomSummary = { code: string; name: string; state: number; lastMessageAt: string | null }
 type RoomMessagePreview = { content: string; senderName?: string; senderEmail: string; createdAt: string }
 
+const SIDEBAR_ROOMS_CACHE_KEY = 'wos_sidebar_joined_rooms_v1'
+const SIDEBAR_SUMMARY_CACHE_KEY = 'wos_sidebar_joined_rooms_summary_v1'
+
 export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: { collapsed: boolean; onToggle: () => void; mobileOpen?: boolean; onMobileClose?: () => void }) {
   const { pathname } = useLocation()
   const nav = useNavigate()
@@ -85,6 +88,28 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
     } catch {}
   }
 
+  // Hydrate joined rooms from cache for faster initial render
+  useEffect(() => {
+    try {
+      const cachedRoomsRaw = localStorage.getItem(SIDEBAR_ROOMS_CACHE_KEY)
+      const cachedSummariesRaw = localStorage.getItem(SIDEBAR_SUMMARY_CACHE_KEY)
+      if (cachedRoomsRaw) {
+        const parsedRooms = JSON.parse(cachedRoomsRaw) as JoinedRoom[]
+        if (Array.isArray(parsedRooms)) {
+          setRooms(parsedRooms)
+        }
+      }
+      if (cachedSummariesRaw) {
+        const parsedSummaries = JSON.parse(cachedSummariesRaw) as Record<string, string | null>
+        if (parsedSummaries && typeof parsedSummaries === 'object') {
+          setSummaries(parsedSummaries)
+        }
+      }
+    } catch {
+      // ignore cache errors
+    }
+  }, [])
+
   async function notifyRoomInBackground(room: RoomSummary, lastTimestamp: number) {
     const code = room.code
     if (fetchingPreviewRef.current[code]) return
@@ -142,6 +167,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       ;(summary || []).forEach((s) => { nextMap[s.code] = s.lastMessageAt ? String(s.lastMessageAt) : null })
       setSummaries(nextMap)
       setRoomsError(null)
+      try {
+        localStorage.setItem(SIDEBAR_ROOMS_CACHE_KEY, JSON.stringify(list || []))
+        localStorage.setItem(SIDEBAR_SUMMARY_CACHE_KEY, JSON.stringify(nextMap))
+      } catch {
+        // ignore cache write errors
+      }
     } catch (err: any) {
       if (fetchSeq.current !== seq) return
       const status = err?.response?.status
@@ -201,19 +232,27 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             {!collapsed && (
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <img src={logo} alt="WOS Dawn" className="h-11 w-11 rounded-xl object-cover shadow-lg ring-2 ring-blue-500/20" />
-                  <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-slate-900" />
+                  <img
+                    src={logo}
+                    alt="WOS Dawn"
+                    className="h-11 w-11 rounded-2xl object-cover shadow-xl shadow-sky-500/40 ring-2 ring-sky-400/80"
+                  />
+                  <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.8)] border-2 border-slate-900" />
                 </div>
                 <div>
                   <div className="font-semibold text-base text-white">WOS Dawn</div>
-                  <div className="text-[10px] uppercase tracking-[0.15em] text-blue-400/70 font-medium">Command Center</div>
+                  <div className="text-[10px] uppercase tracking-[0.15em] text-sky-300/80 font-medium">Command Center</div>
                 </div>
               </div>
             )}
             {collapsed && (
               <div className="mx-auto relative">
-                <img src={logo} alt="WOS Dawn" className="h-11 w-11 rounded-xl object-cover shadow-lg ring-2 ring-blue-500/20" />
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-green-500 border-2 border-slate-900" />
+                <img
+                  src={logo}
+                  alt="WOS Dawn"
+                  className="h-11 w-11 rounded-2xl object-cover shadow-xl shadow-sky-500/40 ring-2 ring-sky-400/80"
+                />
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.8)] border-2 border-slate-900" />
               </div>
             )}
             <button
@@ -318,7 +357,15 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                         key={r.code}
                         to={`/dashboard/alliance-chat/${r.code}`}
                         active={pathname === `/dashboard/alliance-chat/${r.code}`}
-                        icon={<span className="w-3 h-3 rounded-full bg-white/40" />}
+                        icon={
+                          <span
+                            className={`w-3 h-3 rounded-full ${
+                              unread
+                                ? 'bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.9)]'
+                                : 'bg-emerald-500/60'
+                            }`}
+                          />
+                        }
                         collapsed={false}
                         title={`${r.name} • ${r.state}`}
                         label={
@@ -331,7 +378,10 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                             )}
                           </span>
                         }
-                        onNavigate={() => { markSeen(r.code); if (onMobileClose) onMobileClose() }}
+                        onNavigate={() => {
+                          markSeen(r.code)
+                          if (onMobileClose) onMobileClose()
+                        }}
                       />
                     )
                   })}
