@@ -304,8 +304,8 @@ export default function ChatAi() {
           style={{ paddingBottom: `calc(20px + ${composerHeight}px)` }}
         >
           {messages.length === 0 && (
-            <div className="flex items-center justify-center h-full text-white/45 text-sm">
-              Start a conversation with your AI assistant
+            <div className="flex items-center justify-center h-full px-6 text-center text-white/60 text-base sm:text-lg md:text-xl leading-snug">
+              Type a question or message below to start chatting with your AI assistant.
             </div>
           )}
           {messages.map((m, i) => (

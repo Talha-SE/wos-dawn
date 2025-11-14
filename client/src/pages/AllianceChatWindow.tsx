@@ -163,6 +163,8 @@ export default function AllianceChatWindow() {
   const [pendingTranslations, setPendingTranslations] = useState<Record<string, { retryCount: number; translationId?: string }>>({}) // messageId -> retry info
   const languageDropdownRef = useRef<HTMLDivElement | null>(null)
   const [showLanguageTutorial, setShowLanguageTutorial] = useState(false)
+  const autoTranslatedRef = useRef<Set<string>>(new Set())
+  const targetLanguageRef = useRef('')
 
   const activeRouteCode = routeCode ? String(routeCode) : ''
 
@@ -207,6 +209,11 @@ export default function AllianceChatWindow() {
   function getMessagesCacheKey(code: string): string {
     return `${ALLIANCE_MESSAGES_CACHE_PREFIX}${code}`
   }
+
+  // Keep a ref in sync so SSE handlers see the latest target language
+  useEffect(() => {
+    targetLanguageRef.current = targetLanguage
+  }, [targetLanguage])
 
   const loadJoinedRooms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!user) {
@@ -322,7 +329,8 @@ export default function AllianceChatWindow() {
 
   // Translation function with server-side queue
   async function translateMessage(messageId: string, messageContent: string, retryCount: number = 0) {
-    if (!targetLanguage.trim()) {
+    const lang = targetLanguageRef.current.trim()
+    if (!lang) {
       alert('Please select a target language first from the Languages button in the header.')
       return
     }
@@ -349,11 +357,11 @@ export default function AllianceChatWindow() {
     setTranslatingId(messageId)
     
     try {
-      console.log('Translating message:', { messageId, targetLanguage, retryCount, text: messageContent.substring(0, 50) + '...' })
+      console.log('Translating message:', { messageId, targetLanguage: lang, retryCount, text: messageContent.substring(0, 50) + '...' })
       
       const { data, status } = await api.post('/alliance/translate', {
         text: messageContent,
-        targetLanguage: targetLanguage.trim(),
+        targetLanguage: lang,
         messageId: messageId,
         roomCode: joined?.code || ''
       })
@@ -1014,9 +1022,15 @@ export default function AllianceChatWindow() {
             })
           }
 
-          // Auto-translate new incoming messages when a target language is selected
-          if (targetLanguage.trim()) {
-            translateMessage(payload._id, payload.content)
+          // Auto-translate only truly new messages (<= 5s old) once per message
+          if (targetLanguageRef.current.trim() && !autoTranslatedRef.current.has(payload._id)) {
+            const createdTs = payload.createdAt ? new Date(payload.createdAt).getTime() : Date.now()
+            const safeCreated = Number.isFinite(createdTs) ? createdTs : Date.now()
+            const ageMs = Date.now() - safeCreated
+            if (ageMs >= 0 && ageMs <= 5000) {
+              autoTranslatedRef.current.add(payload._id)
+              translateMessage(payload._id, payload.content)
+            }
           }
         }
         scrollToBottom()
