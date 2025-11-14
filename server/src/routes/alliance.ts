@@ -221,7 +221,7 @@ RULES:
       const { data } = await axios.post(
         'https://api.mistral.ai/v1/chat/completions',
         {
-          model: 'mistral-large-latest',
+          model: 'mistral-small-2501',
           messages: [
             {
               role: 'system',

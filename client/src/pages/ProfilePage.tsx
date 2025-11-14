@@ -146,173 +146,60 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.7fr_1fr]">
-          <div className="space-y-6">
-            <section className="rounded-3xl border border-white/10 bg-slate-950/60 backdrop-blur-xl shadow-[0_30px_60px_-40px_rgba(59,130,246,0.45)] animate-fadeUp" style={{ animationDelay: '0.05s' }}>
-              <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 py-5 border-b border-white/10">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">Commander Identity</h2>
-                  <p className="text-sm text-white/60 mt-1">Link your Whiteout Survival presence for alliance automations.</p>
-                </div>
-                <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-widest ${syncTone}`}>
-                  <Radio size={12} /> {syncState}
-                </span>
-              </header>
-              <div className="px-6 py-6 space-y-6">
-                <div className="grid md:grid-cols-2 gap-5">
-                  <div className="space-y-3">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-white/60">Game ID</label>
-                    <Input
-                      value={gameId}
-                      onChange={(e) => setGameId(e.target.value)}
-                      placeholder="Enter your commander ID"
-                      className="font-mono bg-white/5 border-white/10 focus:border-primary/60 focus:ring-primary/30"
-                    />
-                    <div className="flex items-center justify-between text-[11px] text-white/45">
-                      <span>Auto-saves after a short pause</span>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-white/60 hover:text-white hover:border-primary/50 transition"
-                        onClick={() => copyValue(gameId, 'gameId')}
-                      >
-                        {copiedField === 'gameId' ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-white/60">In-game name</label>
-                    <Input
-                      value={gameName}
-                      onChange={(e) => setGameName(e.target.value)}
-                      placeholder="How should teammates find you?"
-                      className="bg-white/5 border-white/10 focus:border-primary/60 focus:ring-primary/30"
-                    />
-                    <div className="flex items-center justify-between text-[11px] text-white/45">
-                      <span>Displayed across alliance features</span>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-white/60 hover:text-white hover:border-primary/50 transition"
-                        onClick={() => copyValue(gameName, 'gameName')}
-                      >
-                        {copiedField === 'gameName' ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
+        <div className="space-y-6">
+          <section className="rounded-3xl border border-white/10 bg-slate-950/60 backdrop-blur-xl shadow-[0_30px_60px_-40px_rgba(59,130,246,0.45)] animate-fadeUp" style={{ animationDelay: '0.05s' }}>
+            <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 py-5 border-b border-white/10">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Commander Identity</h2>
+                <p className="text-sm text-white/60 mt-1">Link your Whiteout Survival presence for alliance automations.</p>
+              </div>
+              <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-widest ${syncTone}`}>
+                <Radio size={12} /> {syncState}
+              </span>
+            </header>
+            <div className="px-6 py-6 space-y-6">
+              <div className="grid md:grid-cols-2 gap-5">
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-white/60">Game ID</label>
+                  <Input
+                    value={gameId}
+                    onChange={(e) => setGameId(e.target.value)}
+                    placeholder="Enter your commander ID"
+                    className="font-mono bg-white/5 border-white/10 focus:border-primary/60 focus:ring-primary/30"
+                  />
+                  <div className="flex items-center justify-between text-[11px] text-white/45">
+                    <span>Auto-saves after a short pause</span>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-white/60 hover:text-white hover:border-primary/50 transition"
+                      onClick={() => copyValue(gameId, 'gameId')}
+                    >
+                      {copiedField === 'gameId' ? 'Copied' : 'Copy'}
+                    </button>
                   </div>
                 </div>
-
-                <div className="grid md:grid-cols-2 gap-5">
-                  <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary-100">
-                      <Gamepad2 size={14} /> Live Link
-                    </div>
-                    <p className="mt-2 text-sm text-white/80">
-                      {user?.gameId
-                        ? 'Your commander ID is synced. Alliance leaders can reference this instantly when coordinating ops.'
-                        : 'Connect your commander ID to unlock synced rosters and mission tracking inside the alliance tools.'}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/60">
-                      <Sparkles size={14} className="text-amber-300" /> Personal highlights
-                    </div>
-                    <ul className="space-y-2 text-sm text-white/70">
-                      <li>• Create a memorable in-game name so squadmates recognize you instantly.</li>
-                      <li>• Keep ID and name synced—automations rely on accurate commander info.</li>
-                    </ul>
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-white/60">In-game name</label>
+                  <Input
+                    value={gameName}
+                    onChange={(e) => setGameName(e.target.value)}
+                    placeholder="How should teammates find you?"
+                    className="bg-white/5 border-white/10 focus:border-primary/60 focus:ring-primary/30"
+                  />
+                  <div className="flex items-center justify-between text-[11px] text-white/45">
+                    <span>Displayed across alliance features</span>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-white/60 hover:text-white hover:border-primary/50 transition"
+                      onClick={() => copyValue(gameName, 'gameName')}
+                    >
+                      {copiedField === 'gameName' ? 'Copied' : 'Copy'}
+                    </button>
                   </div>
                 </div>
               </div>
-            </section>
-
-            <section className="rounded-3xl border border-white/10 bg-slate-950/60 backdrop-blur-xl shadow-[0_30px_60px_-40px_rgba(59,130,246,0.35)] animate-fadeUp" style={{ animationDelay: '0.12s' }}>
-              <header className="px-6 py-5 border-b border-white/10">
-                <h2 className="text-xl font-semibold text-white">Account confidence</h2>
-                <p className="mt-1 text-sm text-white/60">Your credentials remain secured under WOS Dawn safeguards.</p>
-              </header>
-              <div className="px-6 py-6 space-y-5">
-                <div className="rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="text-emerald-300" />
-                    <div>
-                      <p className="text-sm font-semibold text-white">Multi-layer protection</p>
-                      <p className="text-xs text-emerald-100/80">Sessions are verified continuously; suspicious activity prompts re-authentication.</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-2 rounded-full border border-emerald-300/30 bg-emerald-400/10 px-4 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/20 transition"
-                  >
-                    Review security tips
-                  </button>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4 text-sm text-white/70">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
-                    <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/50"><Mail size={12} /> Contact</span>
-                    <p className="text-base text-white">{user?.email || 'user@wos.com'}</p>
-                    <p className="text-xs text-white/45">We’ll reach you here for alliance escalations and security notices.</p>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2">
-                    <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-white/50"><Clock size={12} /> Last sync</span>
-                    <p className="text-base text-white">{savedAt ? formatExactTime(savedAt) : 'No sync recorded yet'}</p>
-                    <p className="text-xs text-white/45">Updates trigger automatically whenever you adjust your commander details.</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <aside className="space-y-6">
-            <section className="rounded-3xl border border-white/10 bg-slate-950/60 backdrop-blur-xl p-6 animate-fadeUp" style={{ animationDelay: '0.08s' }}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Sync monitor</h3>
-                  <p className="text-sm text-white/55 mt-1">Know exactly when your data was refreshed.</p>
-                </div>
-                <span className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-widest ${syncTone}`}>
-                  <Radio size={12} /> {syncState}
-                </span>
-              </div>
-              <div className="mt-5 space-y-4">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-[11px] uppercase tracking-widest text-white/45">Current link</div>
-                  <p className="mt-1 text-sm font-semibold text-white">{user?.gameId || 'ID not linked yet'}</p>
-                  <p className="text-xs text-white/45 mt-1">Updates within seconds after editing the ID field above.</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-[11px] uppercase tracking-widest text-white/45">Recent activity</div>
-                  <p className="mt-1 text-sm font-semibold text-white">{savedAt ? formatRelativeTime(savedAt) : 'No activity recorded'}</p>
-                  <p className="text-xs text-white/45 mt-1">We log the moment your profile syncs to keep your alliance roster consistent.</p>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-3xl border border-white/10 bg-slate-950/60 backdrop-blur-xl p-6 space-y-5 animate-fadeUp" style={{ animationDelay: '0.15s' }}>
-              <div className="flex items-center gap-3">
-                <Sparkles className="text-primary" />
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Activity timeline</h3>
-                  <p className="text-sm text-white/55">Your latest account signals at a glance.</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                {timelineItems.map((item, idx) => (
-                  <div key={idx} className="relative pl-7">
-                    <div className="absolute left-1 top-1.5 h-8 w-px bg-white/10" />
-                    <div className="absolute left-0 top-1 grid h-5 w-5 place-items-center rounded-full border border-white/15 bg-white/5">
-                      <item.icon size={14} className="text-primary" />
-                    </div>
-                    <div className="ml-1">
-                      <div className="flex items-center justify-between text-sm text-white">
-                        <span className="font-semibold">{item.title}</span>
-                        <span className="text-xs text-white/45">{item.meta}</span>
-                      </div>
-                      <p className="text-xs text-white/50 mt-1">{item.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </aside>
+            </div>
+          </section>
         </div>
       </div>
     </div>
