@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/Button'
 import Input from '../components/Input'
@@ -26,6 +26,7 @@ import { gentlyRequestNotificationPermission, showRoomNotification } from '../ut
 
 type Room = { code: string; name: string; state: number; isOwner?: boolean }
 type Message = { _id: string; roomCode: string; senderEmail: string; senderId: string; senderName?: string; content: string; createdAt: string }
+type JoinedRoomSummary = { code: string; name: string; state: number; lastMessageAt: string | null }
 
 type AllianceMember = {
   userId: string
@@ -107,6 +108,10 @@ export default function AllianceChatWindow() {
   const [copied, setCopied] = useState(false)
   const [showMobileDetails, setShowMobileDetails] = useState(false)
 
+  const [joinedRooms, setJoinedRooms] = useState<JoinedRoomSummary[]>([])
+  const [joinedRoomsLoading, setJoinedRoomsLoading] = useState(false)
+  const [joinedRoomsError, setJoinedRoomsError] = useState<string | null>(null)
+
   const [q, setQ] = useState('')
   const [results, setResults] = useState<Room[]>([])
   const [searching, setSearching] = useState(false)
@@ -114,6 +119,7 @@ export default function AllianceChatWindow() {
 
   const [messages, setMessages] = useState<Message[]>([])
   const [messageText, setMessageText] = useState('')
+  const [inputFocused, setInputFocused] = useState(false)
   const [sending, setSending] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const sseRef = useRef<EventSource | null>(null)
@@ -153,6 +159,106 @@ export default function AllianceChatWindow() {
   const [translatingId, setTranslatingId] = useState<string | null>(null)
   const [pendingTranslations, setPendingTranslations] = useState<Record<string, { retryCount: number; translationId?: string }>>({}) // messageId -> retry info
   const languageDropdownRef = useRef<HTMLDivElement | null>(null)
+  const [showLanguageTutorial, setShowLanguageTutorial] = useState(false)
+
+  const activeRouteCode = routeCode ? String(routeCode) : ''
+
+  function getLastSeen(code: string): number {
+    try {
+      return Number(localStorage.getItem(`wos_room_seen_${code}`) || 0)
+    } catch {
+      return 0
+    }
+  }
+
+  function markRoomSeen(code: string) {
+    try {
+      localStorage.setItem(`wos_room_seen_${code}`, String(Date.now()))
+      window.dispatchEvent(new Event('alliance:rooms-refresh'))
+    } catch {}
+  }
+
+  function hasUnread(code: string, lastMessageAt: string | null): boolean {
+    if (!lastMessageAt) return false
+    const lastTs = new Date(lastMessageAt).getTime()
+    if (!Number.isFinite(lastTs)) return false
+    return lastTs > getLastSeen(code)
+  }
+
+  function formatLastActivity(lastMessageAt: string | null): string {
+    if (!lastMessageAt) return 'No messages yet'
+    const ts = new Date(lastMessageAt).getTime()
+    if (!Number.isFinite(ts)) return 'No messages yet'
+    const diff = Date.now() - ts
+    if (diff < 0) return 'Just now'
+    const minute = 60_000
+    const hour = 60 * minute
+    const day = 24 * hour
+    if (diff < minute) return 'Just now'
+    if (diff < hour) return `${Math.max(1, Math.floor(diff / minute))}m ago`
+    if (diff < day) return `${Math.max(1, Math.floor(diff / hour))}h ago`
+    if (diff < 7 * day) return `${Math.max(1, Math.floor(diff / day))}d ago`
+    return new Date(ts).toLocaleDateString()
+  }
+
+  const loadJoinedRooms = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    if (!user) {
+      setJoinedRooms([])
+      setJoinedRoomsError(null)
+      setJoinedRoomsLoading(false)
+      return
+    }
+
+    if (!silent) setJoinedRoomsLoading(true)
+    try {
+      const [{ data: rooms }, { data: summary }] = await Promise.all([
+        api.get<JoinedRoomSummary[]>('/alliance/my-rooms'),
+        api.get<JoinedRoomSummary[]>('/alliance/my-rooms/summary').catch(() => ({ data: [] as JoinedRoomSummary[] }))
+      ])
+
+      const summaryMap = new Map<string, string | null>((summary || []).map((item) => [item.code, item.lastMessageAt ?? null]))
+      const merged = (rooms || []).map((room) => ({
+        ...room,
+        lastMessageAt: summaryMap.has(room.code) ? summaryMap.get(room.code)! : null
+      }))
+      setJoinedRooms(merged)
+      setJoinedRoomsError(null)
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Unable to load your rooms'
+      setJoinedRoomsError(message)
+    } finally {
+      if (!silent) setJoinedRoomsLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    loadJoinedRooms()
+    const handleFocus = () => loadJoinedRooms({ silent: true })
+    const handleRefresh = () => loadJoinedRooms({ silent: true })
+    window.addEventListener('focus', handleFocus)
+    window.addEventListener('alliance:rooms-refresh', handleRefresh)
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('alliance:rooms-refresh', handleRefresh)
+    }
+  }, [loadJoinedRooms])
+
+  function handleOpenRoom(room: JoinedRoomSummary) {
+    markRoomSeen(room.code)
+    setTab('join')
+    setJoinCode(room.code)
+    setJoinPassword('')
+    nav(`/dashboard/alliance-chat/${room.code}`)
+  }
+
+  async function copyRoomCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+    } catch {}
+  }
+
+  const barActive = inputFocused || messageText.trim().length > 0 || recording || transcribing
 
   // Generate consistent color for each user based on their email
   function getUserColor(email: string): string {
@@ -263,7 +369,7 @@ export default function AllianceChatWindow() {
 
   // Poll for translation completion
   async function pollTranslationStatus(messageId: string, translationId: string, initialRetryCount: number) {
-    const maxPolls = 60 // Max 60 polls (3 minutes at 3 second intervals)
+    const maxPolls = 60 // Max 60 polls (about 1 minute at 1 second intervals)
     let pollCount = 0
     
     const poll = async () => {
@@ -339,14 +445,14 @@ export default function AllianceChatWindow() {
         
         // Still pending - poll again
         pollCount++
-        setTimeout(poll, 3000) // Poll every 3 seconds
+        setTimeout(poll, 1000) // Poll every 1 second
         
       } catch (err: any) {
         console.error('Error polling translation status:', err)
         // Continue polling even on error
         pollCount++
         if (pollCount < maxPolls) {
-          setTimeout(poll, 3000)
+          setTimeout(poll, 1000)
         } else {
           setPendingTranslations(prev => {
             const newPending = { ...prev }
@@ -357,8 +463,8 @@ export default function AllianceChatWindow() {
       }
     }
     
-    // Start polling after 3 seconds
-    setTimeout(poll, 3000)
+    // Start polling after 1 second
+    setTimeout(poll, 1000)
   }
 
   // Load user's saved translation language preference
@@ -996,6 +1102,21 @@ export default function AllianceChatWindow() {
     }
   }, [routeCode])
 
+  // Show translation language tutorial once when a room is joined
+  useEffect(() => {
+    if (!joined?.code) return
+    try {
+      const key = 'wos_alliance_lang_tutorial_shown'
+      if (!localStorage.getItem(key)) {
+        setShowLanguageTutorial(true)
+        localStorage.setItem(key, '1')
+      }
+    } catch {
+      // If localStorage fails, still show tutorial once for this session
+      setShowLanguageTutorial(true)
+    }
+  }, [joined?.code])
+
   function openTutorial() {
     setTutorialIndex(0)
     setShowTutorial(true)
@@ -1023,6 +1144,63 @@ export default function AllianceChatWindow() {
     return (
       <>
         <audio ref={notificationSoundRef} className="hidden" preload="auto" src={notificationMp3} />
+
+        {/* Translation language mini tutorial - mobile-first overlay */}
+        {showLanguageTutorial && (
+          <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center px-3 pb-6 sm:pb-0 pointer-events-none">
+            <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setShowLanguageTutorial(false)} />
+            <div className="relative w-full max-w-sm rounded-2xl bg-slate-900/95 border border-white/10 shadow-xl px-3.5 py-3.5 sm:px-4 sm:py-4 pointer-events-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-200">
+                  <Languages size={14} />
+                </div>
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-200">Chat translation</div>
+              </div>
+              <div className="space-y-2.5">
+                <p className="text-sm text-white/90 leading-snug">
+                  Choose a language so alliance messages can be translated for you.
+                </p>
+                <ol className="space-y-1.5 text-xs text-white/80">
+                  <li className="flex gap-2">
+                    <span className="mt-[2px] h-4 w-4 flex-none rounded-full bg-indigo-500/20 text-[11px] font-semibold text-indigo-200 grid place-items-center">1</span>
+                    <span>
+                      Tap the
+                      <span className="inline-flex items-center mx-1 px-1.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-[11px] text-indigo-100 gap-1">
+                        <Languages size={12} />
+                        <span>Translate</span>
+                      </span>
+                      button in the top bar.
+                    </span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="mt-[2px] h-4 w-4 flex-none rounded-full bg-indigo-500/20 text-[11px] font-semibold text-indigo-200 grid place-items-center">2</span>
+                    <span>Type any language (for example, "English" or "Korean") or pick one from Quick Select, then press <span className="font-semibold">Set</span>.</span>
+                  </li>
+                </ol>
+              </div>
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLanguageTutorial(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLanguageTutorial(false)
+                    setShowLanguageDropdown(true)
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500 text-white hover:bg-indigo-600 active:scale-[0.97] transition-all"
+                >
+                  Open language menu
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Fixed full-screen container that prevents content from hiding */}
         <div className="fixed left-0 right-0 bottom-0 top-[calc(var(--dashboard-header-offset,3.75rem)-0.75rem)] z-30 flex flex-col bg-transparent md:relative md:inset-auto md:top-auto md:bottom-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:h-[calc(100vh-160px)] md:top-[var(--dashboard-header-offset,3.75rem)]">
           {/* Sticky Header Bar - Always visible at top */}
@@ -1429,9 +1607,12 @@ export default function AllianceChatWindow() {
                   const prev = idx > 0 ? messages[idx - 1] : null
                   const sameAsPrev = !!(prev && prev.senderEmail === msg.senderEmail)
                   const showSenderLabel = !mine && !sameAsPrev
-                  
+
                   return (
-                    <div key={msg._id} className={`flex gap-1.5 ${mine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}>
+                    <div
+                      key={msg._id}
+                      className={`flex gap-1.5 ${mine ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-200`}
+                    >
                       {/* Delete button on LEFT for sent messages (mine) */}
                       {mine && canDelete && (
                         <button
@@ -1448,7 +1629,7 @@ export default function AllianceChatWindow() {
                           )}
                         </button>
                       )}
-                      
+
                       <div className={`group max-w-[70%] sm:max-w-[60%] md:max-w-[52%] lg:max-w-[45%]`}>
                         {/* Sender label only at start of a block from same sender */}
                         {showSenderLabel && (
@@ -1456,45 +1637,61 @@ export default function AllianceChatWindow() {
                             {(msg.senderName && msg.senderName.trim()) || msg.senderEmail.split('@')[0]}
                           </div>
                         )}
-                        
+
                         {/* Message bubble */}
-                        <div className={`notranslate relative group rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 ${
-                          mine
-                            ? 'bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/30 rounded-tr-md'
-                            : 'bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 text-white border border-white/15 backdrop-blur-md shadow-lg shadow-violet-500/20 rounded-tl-md'
-                        }`}>
+                        <div
+                          className={`notranslate relative group rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 ${
+                            mine
+                              ? 'bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 text-white rounded-tr-md'
+                              : 'bg-gradient-to-br from-white via-sky-50 to-sky-100 text-sky-950 border border-sky-100/70 rounded-tl-md'
+                          }`}
+                        >
                           <div className="flex items-end justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               {/* Original message */}
-                              <div translate="no" className={`notranslate leading-relaxed whitespace-pre-wrap break-words ${
-                                mine ? 'text-[12px] sm:text-[13px] md:text-[15px]' : 'text-[11px] sm:text-[12px] md:text-[14px]'
-                              }`}>
+                              <div
+                                translate="no"
+                                className={`notranslate leading-relaxed whitespace-pre-wrap break-words ${
+                                  mine
+                                    ? 'text-[12px] sm:text-[13px] md:text-[15px]'
+                                    : 'text-[11px] sm:text-[12px] md:text-[14px]'
+                                }`}
+                              >
                                 {msg.content}
                               </div>
-                              
+
                               {/* Translated message (if available) */}
                               {translations[msg._id] && (
                                 <div className="notranslate mt-2 pt-2 border-t border-white/20" translate="no">
                                   <div className="flex items-center gap-1 mb-1">
-                                    <Languages size={10} className="text-indigo-300" />
-                                    <span className="text-[9px] text-indigo-300 font-medium uppercase tracking-wide">
+                                    <Languages size={10} className="text-sky-600" />
+                                    <span className="text-[9px] text-sky-800 font-semibold uppercase tracking-wide">
                                       {targetLanguage}
                                     </span>
                                   </div>
-                                  <div className={`notranslate leading-relaxed whitespace-pre-wrap break-words italic ${
-                                    mine ? 'text-[11px] sm:text-[12px] md:text-[14px] text-blue-100' : 'text-[10px] sm:text-[11px] md:text-[13px] text-white/90'
-                                  }`} translate="no">
+                                  <div
+                                    className={`notranslate leading-relaxed whitespace-pre-wrap break-words italic ${
+                                      mine
+                                        ? 'text-[11px] sm:text-[12px] md:text-[14px] text-blue-100'
+                                        : 'text-[10px] sm:text-[11px] md:text-[13px] text-sky-900/90'
+                                    }`}
+                                    translate="no"
+                                  >
                                     {translations[msg._id]}
                                   </div>
                                 </div>
                               )}
                             </div>
-                            
+
                             <div className="flex flex-col items-end gap-1 flex-none">
-                              <span className={`text-[10px] whitespace-nowrap ${mine ? 'text-purple-200/70' : 'text-gray-400'}`}>
+                              <span
+                                className={`text-[10px] whitespace-nowrap ${
+                                  mine ? 'text-purple-200/70' : 'text-black/70'
+                                }`}
+                              >
                                 {time}
                               </span>
-                              
+
                               {/* Translate button */}
                               {targetLanguage && (
                                 <button
@@ -1503,21 +1700,21 @@ export default function AllianceChatWindow() {
                                   disabled={translatingId === msg._id || !!pendingTranslations[msg._id]}
                                   className={`w-6 h-6 rounded-full transition-all grid place-items-center relative ${
                                     translations[msg._id]
-                                      ? 'bg-indigo-500/30 text-indigo-300 hover:bg-indigo-500/40'
+                                      ? 'bg-sky-600 text-white border border-sky-600 hover:bg-sky-700'
                                       : pendingTranslations[msg._id]
-                                        ? 'bg-yellow-500/20 text-yellow-300 animate-pulse'
-                                        : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                                        ? 'bg-amber-400/90 text-amber-950 border border-amber-400 animate-pulse'
+                                        : 'bg-sky-100 text-sky-700 border border-sky-200 hover:bg-sky-200 hover:text-sky-900'
                                   } active:scale-95 ${(translatingId === msg._id || pendingTranslations[msg._id]) ? 'cursor-wait' : ''}`}
                                   title={
-                                    translations[msg._id] 
-                                      ? 'Re-translate' 
+                                    translations[msg._id]
+                                      ? 'Re-translate'
                                       : pendingTranslations[msg._id]
                                         ? `Retrying... (${pendingTranslations[msg._id].retryCount})`
                                         : 'Translate'
                                   }
                                 >
                                   {translatingId === msg._id ? (
-                                    <div className="w-3 h-3 border border-white/30 border-t-white/70 rounded-full animate-spin" />
+                                    <div className="w-3 h-3 border border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
                                   ) : pendingTranslations[msg._id] ? (
                                     <>
                                       <Languages size={12} />
@@ -1532,7 +1729,7 @@ export default function AllianceChatWindow() {
                           </div>
                         </div>
                       </div>
-                      
+
                       {/* Delete button on RIGHT for received messages */}
                       {!mine && canDelete && (
                         <button
@@ -1586,74 +1783,105 @@ export default function AllianceChatWindow() {
           )}
 
           {/* Fixed Typing Bar - Positioned at bottom without hiding sidebar */}
-          <div ref={typingBarRef} className="absolute left-0 right-0 flex justify-center px-3 md:px-6 pb-safe pb-3 md:pb-4 bg-gradient-to-t from-slate-950 via-slate-950/98 to-transparent pt-4 pointer-events-none z-40" style={{ bottom: kbOffset }}>
-            <div className="pointer-events-auto w-full max-w-4xl">
-              <div className="flex items-center gap-2 md:gap-3 min-w-0 rounded-full bg-gradient-to-r from-slate-900/98 via-slate-800/98 to-slate-900/98 backdrop-blur-xl border border-white/20 shadow-2xl px-2.5 md:px-4 py-2 md:py-2.5">
-                {/* Voice Button */}
-                <button
-                  type="button"
-                  onClick={toggleRecord}
-                  disabled={sending || transcribing}
-                  className={`flex-none h-10 w-10 md:h-11 md:w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
-                    recording
-                      ? 'bg-red-500 text-white shadow-red-500/50 scale-105'
-                      : transcribing
-                        ? 'bg-white/10 text-white/50'
-                        : 'bg-white/10 text-white/60 hover:text-white hover:bg-white/15 active:scale-95'
+          <div
+            ref={typingBarRef}
+            className="absolute left-0 right-0 flex justify-center px-3 md:px-6 pb-safe pb-3 md:pb-4 pt-4 pointer-events-none z-40"
+            style={{ bottom: kbOffset }}
+          >
+            <div
+              className={`pointer-events-auto w-full max-w-4xl transition-all duration-300 ${
+                barActive
+                  ? 'translate-y-[-2px] shadow-[0_8px_28px_rgba(15,23,42,0.35)]'
+                  : 'shadow-[0_6px_22px_rgba(15,23,42,0.28)]'
+              }`}
+            >
+              <div className="relative rounded-3xl bg-slate-900/75 border border-white/10 backdrop-blur-2xl">
+                <div
+                  className={`absolute inset-x-3 top-0 h-px transition-opacity duration-300 ${
+                    barActive ? 'opacity-90 bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent' : 'opacity-40 bg-gradient-to-r from-transparent via-white/30 to-transparent'
                   }`}
-                  title={recording ? 'Stop recording' : 'Voice message'}
-                >
-                  {transcribing ? (
-                    <div className="w-4 h-4 border-2 border-white/60 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Mic size={17} className={recording ? 'animate-pulse' : ''} />
-                  )}
-                </button>
+                />
+                <div className="flex items-center gap-2.5 md:gap-3 min-w-0 px-3.5 md:px-5 py-2.5 md:py-3">
+                  {/* Voice Button */}
+                  <button
+                    type="button"
+                    onClick={toggleRecord}
+                    disabled={sending || transcribing}
+                    className={`flex-none h-10 w-10 md:h-[46px] md:w-[46px] rounded-full transition-all duration-200 grid place-items-center border ${
+                      recording
+                        ? 'border-red-500/50 bg-red-500/30 text-white shadow-[0_0_20px_rgba(248,113,113,0.35)] scale-105'
+                        : transcribing
+                          ? 'border-white/15 bg-white/8 text-white/45'
+                          : 'border-white/12 bg-white/8 text-white/70 hover:text-white hover:border-white/25 hover:bg-white/12 active:scale-[0.96]'
+                    }`}
+                    title={recording ? 'Stop recording' : 'Voice message'}
+                  >
+                    {transcribing ? (
+                      <div className="w-4 h-4 border-[1.5px] border-white/50 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Mic size={18} className={recording ? 'animate-pulse' : ''} />
+                    )}
+                  </button>
 
-                {/* Input Field */}
-                <div className="flex-1 relative min-w-0">
-                  <Input
-                    value={messageText}
-                    onChange={(e) => { setMessageText(e.target.value); if (e.target.value.trim()) emitTypingKeepAlive() }}
-                    onFocus={() => { setTimeout(scrollToBottom, 50) }}
-                    placeholder={transcribing ? 'Transcribing...' : 'Type a message...'}
-                    disabled={transcribing}
-                    name="chat-message"
-                    autoComplete="off"
-                    autoCorrect="on"
-                    autoCapitalize="sentences"
-                    inputMode="text"
-                    className="border-none bg-transparent text-white placeholder:text-white/40 focus:ring-0 h-10 md:h-11 text-sm md:text-base px-2"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        sendMessage()
-                      }
-                    }}
-                  />
-                  {transcribing && (
-                    <div className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2">
-                      <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                  {/* Input Field */}
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className={`relative rounded-2xl transition-all duration-200 ${
+                        barActive ? 'bg-white/6 border border-white/12 shadow-inner shadow-slate-900/40' : 'bg-white/4 border border-white/8'
+                      }`}
+                    >
+                      <Input
+                        value={messageText}
+                        onChange={(e) => {
+                          setMessageText(e.target.value)
+                          if (e.target.value.trim()) emitTypingKeepAlive()
+                        }}
+                        onFocus={(e) => {
+                          setInputFocused(true)
+                          setTimeout(scrollToBottom, 50)
+                        }}
+                        onBlur={() => setInputFocused(false)}
+                        placeholder={transcribing ? 'Transcribing…' : 'Type a message…'}
+                        disabled={transcribing}
+                        name="chat-message"
+                        autoComplete="off"
+                        autoCorrect="on"
+                        autoCapitalize="sentences"
+                        inputMode="text"
+                        className="border-none bg-transparent text-white placeholder:text-white/45 focus:ring-0 h-10 md:h-11 text-sm md:text-[15px] px-3 md:px-4"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault()
+                            sendMessage()
+                          }
+                        }}
+                      />
+                      {transcribing && (
+                        <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2">
+                          <div className="w-4 h-4 border-[1.5px] border-cyan-400/40 border-t-cyan-200 rounded-full animate-spin" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Send Button */}
-                <button
-                  onClick={sendMessage}
-                  disabled={!messageText.trim() || sending}
-                  className={`flex-none h-10 w-10 md:h-11 md:w-11 rounded-full transition-all duration-200 grid place-items-center shadow-lg ${
-                    messageText.trim() && !sending
-                      ? 'bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white shadow-purple-500/50 hover:shadow-purple-500/70 hover:scale-105 active:scale-95'
-                      : 'bg-white/5 text-white/30 cursor-not-allowed'
-                  }`}
-                >
-                  {sending ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Send size={17} />
-                  )}
-                </button>
+                  {/* Send Button */}
+                  <button
+                    onClick={sendMessage}
+                    disabled={!messageText.trim() || sending}
+                    className={`flex-none h-10 w-10 md:h-[46px] md:w-[46px] rounded-full transition-all duration-200 grid place-items-center border ${
+                      messageText.trim() && !sending
+                        ? 'border-transparent bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500 text-white shadow-[0_0_22px_rgba(59,130,246,0.4)] hover:scale-105 active:scale-[0.96]'
+                        : 'border-white/12 bg-white/6 text-white/35 cursor-not-allowed'
+                    }`}
+                    title={messageText.trim() ? 'Send message' : 'Start typing to send'}
+                  >
+                    {sending ? (
+                      <div className="w-4 h-4 border-[1.5px] border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Send size={18} />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1668,6 +1896,125 @@ export default function AllianceChatWindow() {
       <audio ref={notificationSoundRef} className="hidden" preload="auto">
         <source src="/sounds/alliance-message.mp3" type="audio/mpeg" />
       </audio>
+
+      <section className="glass rounded-2xl px-5 md:px-7 py-5 border border-white/10 shadow-lg space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="text-sm md:text-base font-semibold text-white">Your alliance rooms</h2>
+            <p className="text-xs text-white/50">Quickly jump back into any room you already joined.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {joinedRoomsLoading && <Loader2 size={16} className="animate-spin text-white/70" />}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => loadJoinedRooms()}
+              className="px-3 py-1.5 text-xs"
+            >
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {joinedRoomsError && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 flex items-center justify-between gap-3">
+            <span>{joinedRoomsError}</span>
+            <Button variant="subtle" onClick={() => loadJoinedRooms()} className="text-xs px-3 py-1">
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {!joinedRoomsError && joinedRoomsLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="rounded-2xl border border-white/10 bg-white/5 h-28 animate-pulse"
+              />
+            ))}
+          </div>
+        )}
+
+        {!joinedRoomsLoading && !joinedRoomsError && joinedRooms.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-white/15 bg-white/5 px-5 py-6 text-sm text-white/60 text-center space-y-3">
+            <p>You haven’t joined any alliance rooms yet.</p>
+            <div className="flex flex-col sm:flex-row sm:justify-center gap-2 sm:gap-3">
+              <Button onClick={() => setTab('join')} className="px-4 py-2 text-xs">Join a room</Button>
+              <Button variant="subtle" onClick={() => setTab('create')} className="px-4 py-2 text-xs">Create a room</Button>
+            </div>
+          </div>
+        )}
+
+        {!joinedRoomsLoading && !joinedRoomsError && joinedRooms.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {joinedRooms.map((room) => {
+              const unread = hasUnread(room.code, room.lastMessageAt)
+              const active = activeRouteCode === room.code
+              return (
+                <div
+                  key={room.code}
+                  className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 bg-gradient-to-br from-slate-900/85 via-slate-900/65 to-slate-950/85 hover:border-primary/40 hover:shadow-primary/20 ${active ? 'border-primary/60 shadow-[0_0_20px_rgba(59,130,246,0.3)]' : 'border-white/10 shadow-lg/10'}`}
+                >
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
+                  <div className="relative p-5 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-semibold text-white truncate" title={room.name}>{room.name}</h3>
+                          {unread && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 text-[11px] font-semibold">
+                              New
+                            </span>
+                          )}
+                          {active && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 text-primary border border-primary/40 px-2 py-0.5 text-[11px] font-semibold">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-white/50">State {room.state} • {room.code}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => copyRoomCode(room.code)}
+                        className="rounded-full border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-colors px-3 py-1 text-[11px]"
+                      >
+                        Copy code
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-white/50">
+                      <span>Last activity</span>
+                      <span className="text-white/70">{formatLastActivity(room.lastMessageAt)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3">
+                      <Button
+                        onClick={() => handleOpenRoom(room)}
+                        className="flex-1 text-xs py-2"
+                      >
+                        Open room
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          markRoomSeen(room.code)
+                          loadJoinedRooms({ silent: true })
+                        }}
+                        className="px-3 py-2 text-[11px] text-white/70 hover:text-white"
+                      >
+                        Mark read
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
+
       <div className="flex justify-end">
         <Button
           type="button"
