@@ -1038,9 +1038,14 @@ export default function AllianceChatWindow() {
         const p = data.payload as { senderId: string; senderEmail: string; typing: boolean }
         // Ignore own typing events
         if (p.senderEmail === user?.email) return
+
+        // Try to resolve a friendly display name using the alliance roster
+        const member = members.find((m) => m.userId === p.senderId || m.email === p.senderEmail)
+        const displayName = member?.displayName && member.displayName.trim() ? member.displayName.trim() : undefined
+
         setTypingUsers((prev) => {
           const next = { ...prev }
-          if (p.typing) next[p.senderId] = { email: p.senderEmail }
+          if (p.typing) next[p.senderId] = { email: p.senderEmail, name: displayName }
           else delete next[p.senderId]
           return next
         })
@@ -1840,20 +1845,33 @@ export default function AllianceChatWindow() {
               )}
               {/* Typing indicators for other users */}
               {Object.keys(typingUsers).length > 0 && (
-                <div className="px-4 md:px-6">
-                  {Object.entries(typingUsers).map(([id, u]) => (
-                    <div key={id} className="mb-2 max-w-[65%] lg:max-w-[50%]">
-                      <div className="text-[11px] font-medium text-white/60 mb-1 px-1">{u.email.split('@')[0]}</div>
-                      <div className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 border border-white/15 backdrop-blur-md shadow-lg">
-                        <div className="flex items-end gap-1 h-3">
-                          <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '0s' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: '0.15s' }} />
-                          <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                <div
+                  className="absolute left-0 right-0 flex justify-center px-3 md:px-6 z-40 pointer-events-none"
+                  style={{ bottom: (kbOffset || 0) + 72 }}
+                >
+                  <div className="pointer-events-auto w-full max-w-4xl">
+                    {Object.entries(typingUsers).map(([id, u]) => {
+                      const member = members.find((m) => m.userId === id || m.email === u.email)
+                      const label =
+                        (member?.displayName && member.displayName.trim()) ||
+                        (u.name && u.name.trim()) ||
+                        (u.email?.split('@')[0] || 'Alliance member')
+
+                      return (
+                        <div key={id} className="mb-1.5 max-w-[65%] lg:max-w-[50%]">
+                          <div className="text-[11px] font-medium text-white/70 mb-1 px-1">{label}</div>
+                          <div className="inline-flex items-center gap-2 rounded-2xl px-3 py-2 bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 border border-white/15 backdrop-blur-md shadow-lg">
+                            <div className="flex items-end gap-1 h-3">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce" style={{ animationDelay: '0s' }} />
+                              <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: '0.15s' }} />
+                              <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                            </div>
+                            <span className="text-[11px] text-white/80">typing…</span>
+                          </div>
                         </div>
-                        <span className="text-[11px] text-white/70">typing…</span>
-                      </div>
-                    </div>
-                  ))}
+                      )
+                    })}
+                  </div>
                 </div>
               )}
               <div ref={bottomRef} />

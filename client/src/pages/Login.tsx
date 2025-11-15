@@ -193,6 +193,27 @@ export default function Login() {
             </Button>
           </form>
 
+          {/* Discord Invite */}
+          <div className="mt-6 rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 via-slate-900/60 to-purple-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-sky-500 flex items-center justify-center shadow-[0_8px_22px_rgba(59,130,246,0.6)]">
+                <span className="text-lg">💬</span>
+              </div>
+              <div>
+                <div className="text-sm font-semibold text-white">Join the WOS Dawn Discord</div>
+                <div className="text-xs text-white/60">Chat with other commanders, get updates and share strategies.</div>
+              </div>
+            </div>
+            <a
+              href="https://discord.gg/Q8J5sgWNb4"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold px-4 py-2 shadow-[0_10px_24px_rgba(59,130,246,0.7)] transition-transform hover:translate-y-px active:scale-95"
+            >
+              Open Discord
+            </a>
+          </div>
+
           {/* Footer Links */}
           {role === 'user' && (
             <div className="mt-6 text-center text-sm text-white/60">

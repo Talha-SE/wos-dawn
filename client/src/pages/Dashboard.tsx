@@ -13,13 +13,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../state/AuthContext'
 import TranslateSwitcher from '../components/TranslateSwitcher'
 import logo from '../assets/wos-dawn.png'
-import { Menu, LogOut } from 'lucide-react'
+import { Menu, LogOut, MessageSquare } from 'lucide-react'
 
 //
 
 export default function Dashboard() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [showDiscordModal, setShowDiscordModal] = useState(true)
   const { user, logout } = useAuth()
   const nav = useNavigate()
   const location = useLocation()
@@ -168,6 +169,46 @@ export default function Dashboard() {
           </div>
         </main>
       </div>
+
+      {showDiscordModal && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            onClick={() => setShowDiscordModal(false)}
+          />
+          <div className="relative w-full max-w-md rounded-3xl border border-indigo-500/40 bg-gradient-to-br from-slate-950/95 via-slate-900/95 to-slate-950/98 shadow-[0_32px_80px_-40px_rgba(79,70,229,0.9)] p-6 md:p-7">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-sky-500 flex items-center justify-center shadow-[0_12px_30px_rgba(79,70,229,0.85)]">
+                <MessageSquare size={20} className="text-white" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-lg md:text-xl font-semibold text-white">Join the WOS Dawn Discord</h2>
+                <p className="text-sm text-white/70">
+                  Connect with other commanders, get quick updates, and share alliance strategies in our community server.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+              <a
+                href="https://discord.gg/Q8J5sgWNb4"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-semibold px-4 py-2.5 shadow-[0_16px_40px_rgba(79,70,229,0.9)] transition-transform hover:translate-y-px active:scale-95"
+              >
+                <span>Join Discord</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowDiscordModal(false)}
+                className="text-xs text-white/60 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                Maybe later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

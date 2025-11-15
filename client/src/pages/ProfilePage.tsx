@@ -113,7 +113,7 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-2xl md:text-3xl font-semibold text-white tracking-tight">{user?.gameName || 'Commander'}</h1>
+                  <h1 className="text-2xl md:text-3xl font-semibold text-white">{user?.gameName || 'Commander'}</h1>
                   <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1 text-xs uppercase tracking-widest text-white/60 border border-white/10">
                     <Sparkles size={12} /> Elite Member
                   </span>
@@ -198,6 +198,35 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </section>
+
+          <section
+            className="rounded-3xl border border-indigo-500/40 bg-gradient-to-br from-slate-950/90 via-slate-900/85 to-slate-950/95 backdrop-blur-2xl shadow-[0_32px_80px_-40px_rgba(79,70,229,0.75)] animate-fadeUp"
+            style={{ animationDelay: '0.1s' }}
+          >
+            <div className="px-6 py-5 border-b border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-sky-500 flex items-center justify-center shadow-[0_10px_30px_rgba(79,70,229,0.7)]">
+                  <span className="text-xl">💬</span>
+                </div>
+                <div>
+                  <h2 className="text-lg md:text-xl font-semibold text-white">Join the WOS Dawn Discord</h2>
+                  <p className="text-sm text-white/60">Hang out with other commanders, get updates, and share alliance strategies.</p>
+                </div>
+              </div>
+              <a
+                href="https://discord.gg/Q8J5sgWNb4"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white text-xs md:text-sm font-semibold px-4 py-2 shadow-[0_12px_30px_rgba(79,70,229,0.75)] transition-transform hover:translate-y-px active:scale-95"
+              >
+                <span>Open Discord</span>
+              </a>
+            </div>
+            <div className="px-6 pb-6 pt-3 text-xs md:text-sm text-white/60 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <p>Use this server to coordinate tests, report issues, and talk with the WOS Dawn community.</p>
+              <p className="text-[11px] text-white/40">Invite: Q8J5sgWNb4</p>
             </div>
           </section>
         </div>
