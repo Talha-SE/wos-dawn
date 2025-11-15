@@ -1735,7 +1735,7 @@ export default function AllianceChatWindow() {
                         <div
                           className={`notranslate relative group rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 ${
                             mine
-                              ? 'bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 text-white rounded-tr-md'
+                              ? 'bg-gradient-to-br from-sky-600 via-sky-500 to-sky-400 text-white rounded-tr-md'
                               : 'bg-gradient-to-br from-white via-sky-50 to-sky-100 text-sky-950 border border-sky-100/70 rounded-tl-md'
                           }`}
                         >
@@ -1896,16 +1896,12 @@ export default function AllianceChatWindow() {
           >
             <div
               className={`pointer-events-auto w-full max-w-4xl transition-all duration-300 ${
-                barActive
-                  ? 'translate-y-[-2px] shadow-[0_8px_28px_rgba(15,23,42,0.35)]'
-                  : 'shadow-[0_6px_22px_rgba(15,23,42,0.28)]'
+                barActive ? 'translate-y-[-2px]' : ''
               }`}
             >
-              <div className="relative rounded-3xl bg-slate-900/75 border border-white/10 backdrop-blur-2xl">
+              <div className="relative rounded-3xl">
                 <div
-                  className={`absolute inset-x-3 top-0 h-px transition-opacity duration-300 ${
-                    barActive ? 'opacity-90 bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent' : 'opacity-40 bg-gradient-to-r from-transparent via-white/30 to-transparent'
-                  }`}
+                  className="absolute inset-x-3 top-0 h-px opacity-0"
                 />
                 <div className="flex items-center gap-2.5 md:gap-3 min-w-0 px-3.5 md:px-5 py-2.5 md:py-3">
                   {/* Voice Button */}

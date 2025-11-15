@@ -32,7 +32,7 @@ export default function App() {
           <Route path="/quick-redeem" element={<QuickRedeem />} />
           <Route path="/dashboard/*" element={<Protected><Dashboard /></Protected>} />
           <Route path="/admin/*" element={<AdminProtected><AdminApp /></AdminProtected>} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
       <Analytics />

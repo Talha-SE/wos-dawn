@@ -485,9 +485,9 @@ export default function Svs() {
 
       {/* Confirmation Modal */}
       {confirmOpen && pendingIndex !== null && (
-          <div className="fixed inset-0 z-50 grid place-items-center p-4">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 md:px-6">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmOpen(false)} />
-            <div className="relative w-full max-w-md rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl">
+            <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900/95 p-5 shadow-2xl">
               <div className="flex items-center gap-3 mb-2 text-white">
                 <ShieldCheck size={18} className="text-primary" />
                 <h4 className="font-display text-lg">Confirm Reservation</h4>
@@ -529,12 +529,12 @@ export default function Svs() {
 
       {/* Cancel Confirmation Modal */}
       {cancelConfirmOpen && userReservation && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 md:px-6 animate-in fade-in duration-200">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => {
             console.log('Modal backdrop clicked, closing modal')
             setCancelConfirmOpen(false)
           }} />
-          <div className="relative w-full max-w-lg rounded-2xl border border-red-500/30 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 p-6 shadow-2xl shadow-red-500/20 animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-red-500/30 bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 p-6 shadow-2xl shadow-red-500/20 animate-in zoom-in-95 duration-200">
             {/* Header with Icon */}
             <div className="flex items-start gap-4 mb-4">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30 flex-shrink-0">

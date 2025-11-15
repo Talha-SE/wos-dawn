@@ -165,6 +165,7 @@ export default function Dashboard() {
               <Route path="alliance-chat/:code" element={<AllianceChatWindow />} />
               <Route path="contact-admin" element={<ContactAdmin />} />
               <Route path="notifications" element={<Notifications />} />
+              <Route path="*" element={<Navigate to="profile" replace />} />
             </Routes>
           </div>
         </main>
