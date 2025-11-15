@@ -1509,7 +1509,7 @@ export default function AllianceChatWindow() {
                 </div>
                 <div className="grid md:grid-cols-[1.6fr_1fr] gap-4 md:gap-6 px-5 md:px-8 py-5 md:py-6 overflow-y-auto max-h-[90vh]">
                   <div className="space-y-4 md:space-y-5">
-                    <div className="rounded-2xl border border-white/10 bg-white/5">
+                    <div className="rounded-2xl border border-white/20 bg-slate-950/75">
                       <div className="flex flex-wrap items-center justify-between gap-3 px-4 md:px-5 py-4 border-b border-white/10">
                         <div className="flex items-center gap-2 text-sm font-semibold text-white">
                           <Users size={18} />
@@ -1526,7 +1526,7 @@ export default function AllianceChatWindow() {
                           {membersLoading && <Loader2 className="animate-spin" size={16} />}
                         </div>
                       </div>
-                      <div className="max-h-80 md:max-h-96 overflow-y-auto px-4 md:px-5 py-4 space-y-3 scrollbar-elegant">
+                      <div className="max-h-80 md:max-h-96 overflow-y-auto px-3 md:px-4 py-3 space-y-2.5 scrollbar-elegant">
                         {membersError && (
                           <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                             {membersError}
@@ -1544,9 +1544,9 @@ export default function AllianceChatWindow() {
                           return (
                             <div
                               key={member.userId}
-                              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/60 px-3 py-3 md:px-4 md:py-4"
+                              className="flex items-center gap-3 rounded-xl border border-white/25 bg-slate-950/80 px-3 py-2.5 md:px-3.5 md:py-3"
                             >
-                              <div className="flex-none h-10 w-10 rounded-full bg-gradient-to-br from-primary/60 to-blue-500/60 text-white font-semibold grid place-items-center shadow-lg">
+                              <div className="flex-none h-9 w-9 md:h-10 md:w-10 rounded-full bg-gradient-to-br from-primary/60 to-blue-500/60 text-white font-semibold grid place-items-center shadow-lg">
                                 {initials}
                               </div>
                               <div className="flex-1 min-w-0">
