@@ -866,6 +866,24 @@ export default function AllianceChatWindow() {
       }
       scrollToBottom()
       try { localStorage.setItem(`wos_room_seen_${code}`, String(Date.now())); window.dispatchEvent(new Event('alliance:rooms-refresh')) } catch {}
+      // Auto-translate recent history (messages up to 1 minute old) when opening the room
+      try {
+        const lang = targetLanguageRef.current.trim()
+        if (lang && Array.isArray(data) && data.length > 0) {
+          const now = Date.now()
+          for (const msg of data) {
+            if (!msg || !msg._id || msg.senderEmail === user?.email) continue
+            if (autoTranslatedRef.current.has(msg._id)) continue
+            const createdTs = msg.createdAt ? new Date(msg.createdAt).getTime() : now
+            const safeCreated = Number.isFinite(createdTs) ? createdTs : now
+            const ageMs = now - safeCreated
+            if (ageMs >= 0 && ageMs <= 60000) {
+              autoTranslatedRef.current.add(msg._id)
+              translateMessage(msg._id, msg.content)
+            }
+          }
+        }
+      } catch {}
     } catch {
       setMessages([])
     }
@@ -1022,12 +1040,12 @@ export default function AllianceChatWindow() {
             })
           }
 
-          // Auto-translate only truly new messages (<= 5s old) once per message
+          // Auto-translate only truly new messages (<= 1m old) once per message
           if (targetLanguageRef.current.trim() && !autoTranslatedRef.current.has(payload._id)) {
             const createdTs = payload.createdAt ? new Date(payload.createdAt).getTime() : Date.now()
             const safeCreated = Number.isFinite(createdTs) ? createdTs : Date.now()
             const ageMs = Date.now() - safeCreated
-            if (ageMs >= 0 && ageMs <= 5000) {
+            if (ageMs >= 0 && ageMs <= 60000) {
               autoTranslatedRef.current.add(payload._id)
               translateMessage(payload._id, payload.content)
             }
