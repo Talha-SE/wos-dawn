@@ -165,6 +165,7 @@ export default function AllianceChatWindow() {
   const [showLanguageTutorial, setShowLanguageTutorial] = useState(false)
   const autoTranslatedRef = useRef<Set<string>>(new Set())
   const targetLanguageRef = useRef('')
+  const [translatingBatch, setTranslatingBatch] = useState(false)
 
   const activeRouteCode = routeCode ? String(routeCode) : ''
 
@@ -413,6 +414,43 @@ export default function AllianceChatWindow() {
       }
     } finally {
       setTranslatingId(null)
+    }
+  }
+
+  // Translate latest N eligible messages in a batch to reduce manual clicks
+  async function translateLatestMessages(limit: number = 10) {
+    const lang = targetLanguageRef.current.trim()
+    if (!lang) {
+      alert('Please select a target language first from the Languages button in the header.')
+      return
+    }
+
+    if (!messages || messages.length === 0) return
+
+    const eligible = [...messages]
+      .filter((msg) => msg && msg._id && msg.senderEmail !== user?.email)
+      .filter((msg) => !translations[msg._id] && !pendingTranslations[msg._id])
+      .sort((a, b) => {
+        const aTs = new Date(a.createdAt).getTime()
+        const bTs = new Date(b.createdAt).getTime()
+        return (bTs || 0) - (aTs || 0)
+      })
+      .slice(0, limit)
+
+    if (eligible.length === 0) return
+
+    setTranslatingBatch(true)
+    try {
+      for (const msg of eligible) {
+        try {
+          autoTranslatedRef.current.add(msg._id)
+          await translateMessage(msg._id, msg.content)
+        } catch (err) {
+          console.error('Batch translation error', err)
+        }
+      }
+    } finally {
+      setTranslatingBatch(false)
     }
   }
 
@@ -877,7 +915,7 @@ export default function AllianceChatWindow() {
             const createdTs = msg.createdAt ? new Date(msg.createdAt).getTime() : now
             const safeCreated = Number.isFinite(createdTs) ? createdTs : now
             const ageMs = now - safeCreated
-            if (ageMs >= 0 && ageMs <= 60000) {
+            if (ageMs >= 0 && ageMs <= 1800000) {
               autoTranslatedRef.current.add(msg._id)
               translateMessage(msg._id, msg.content)
             }
@@ -1040,12 +1078,12 @@ export default function AllianceChatWindow() {
             })
           }
 
-          // Auto-translate only truly new messages (<= 1m old) once per message
+          // Auto-translate only truly new messages (<= 30m old) once per message
           if (targetLanguageRef.current.trim() && !autoTranslatedRef.current.has(payload._id)) {
             const createdTs = payload.createdAt ? new Date(payload.createdAt).getTime() : Date.now()
             const safeCreated = Number.isFinite(createdTs) ? createdTs : Date.now()
             const ageMs = Date.now() - safeCreated
-            if (ageMs >= 0 && ageMs <= 60000) {
+            if (ageMs >= 0 && ageMs <= 1800000) {
               autoTranslatedRef.current.add(payload._id)
               translateMessage(payload._id, payload.content)
             }
@@ -1347,7 +1385,7 @@ export default function AllianceChatWindow() {
               >
                 {showMobileDetails ? 'Hide' : 'Info'}
               </button>
-              
+
               {/* Language Selector Dropdown */}
               <div className="relative flex-none" ref={languageDropdownRef}>
                 <button
@@ -1358,7 +1396,7 @@ export default function AllianceChatWindow() {
                   <Languages size={16} />
                   <span className="hidden sm:inline">{targetLanguage || 'Translate'}</span>
                 </button>
-                
+
                 {showLanguageDropdown && (
                   <div className="absolute right-0 top-full mt-2 w-64 rounded-xl bg-slate-900 border border-white/20 shadow-2xl z-[60] overflow-hidden">
                     <div className="p-3 border-b border-white/10">
@@ -1443,6 +1481,16 @@ export default function AllianceChatWindow() {
                   </div>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => translateLatestMessages(10)}
+                disabled={!targetLanguage.trim() || translatingBatch || !messages.length}
+                className="flex-none px-2 py-1 md:px-3 md:py-1.5 rounded-lg bg-sky-500/15 border border-sky-400/40 text-[11px] md:text-xs font-medium text-sky-200 hover:bg-sky-500/25 hover:border-sky-400/60 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 inline-flex items-center gap-1.5"
+                title="Translate latest 10 messages in this room"
+              >
+                <span className="inline sm:hidden"><ListChecks size={14} /></span>
+                <span className="hidden sm:inline">Translate 10</span>
+              </button>
               
               <button
                 onClick={() => setShowSettings(true)}
