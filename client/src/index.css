@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Monstera:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -15,7 +15,7 @@
 body {
   min-height: 100vh;
   background: var(--bg-gradient);
-  font-family: 'Monstera', 'Inter', 'Space Grotesk', system-ui, sans-serif;
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
   transition: opacity 0.4s ease, filter 0.4s ease;
   @apply antialiased text-white;
 }
@@ -84,7 +84,7 @@ html, body {
 .ambient-orb.orb-2 { bottom: 12%; right: -120px; }
 
 .glass {
-  background: linear-gradient(145deg, rgba(24, 24, 35, 0.9), rgba(29, 29, 45, 0.6));
+  background: rgba(255, 255, 255, 0.05);
   @apply backdrop-blur-xl border border-white/5 shadow-glass;
 }
 
@@ -120,7 +120,7 @@ html, body {
 }
 
 .subtext {
-  @apply text-sm text-white/60;
+  @apply text-sm text-white/70;
 }
 
 .input {
@@ -174,6 +174,83 @@ html, body {
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(14, 165, 233, 0.26));
   border-color: rgba(37, 99, 235, 0.45);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Floating label input */
+.floating-input {
+  position: relative;
+  margin-top: 1.5rem;
+}
+.floating-input input {
+  @apply w-full h-12 px-4 bg-white/5 text-white placeholder-transparent transition-all duration-200;
+  border: none;
+  border-bottom: 1px solid rgba(148,163,255,0.12);
+  border-radius: 0;
+  padding-top: 1rem;
+}
+.floating-input label {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255,255,255,0.6);
+  font-size: 0.95rem;
+  pointer-events: none;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+.floating-input input:focus + label,
+.floating-input input:not(:placeholder-shown) + label {
+  top: 0.25rem;
+  transform: translateY(0);
+  font-size: 0.75rem;
+  color: rgba(59, 130, 246, 0.9);
+}
+.floating-input input:focus {
+  border-bottom-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 1px 0 0 rgba(59, 130, 246, 0.6);
+}
+
+/* Sliding pill toggle */
+.toggle-pill {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  background: rgba(255,255,255,0.03);
+  padding: 6px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+.toggle-pill .option {
+  position: relative;
+  z-index: 10;
+  flex: 1 1 0;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 9999px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.65);
+}
+.toggle-pill .option.active { color: white; }
+.toggle-pill .slider {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: calc(50% - 6px);
+  left: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(37,99,235,0.18), rgba(168,85,247,0.12));
+  box-shadow: 0 6px 20px -10px rgba(37,99,235,0.35);
+  transition: transform 0.28s cubic-bezier(.2,.9,.3,1), left 0.28s cubic-bezier(.2,.9,.3,1);
+  z-index: 5;
+}
+.toggle-pill.right .slider { transform: translateX(100%); }
+
+/* De-emphasized discord banner */
+.discord-quiet {
+  background: linear-gradient(180deg, rgba(12,14,20,0.6), rgba(9,11,16,0.5));
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: none;
 }
 
 .badge {
@@ -265,8 +342,191 @@ html { font-size: 15px; }
   padding-top: env(safe-area-inset-top, 0);
 }
 
+/* Animation for background orbs */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.4;
+  }
+}
+
+/* Enhanced input field styles */
+input:focus {
+  outline: none;
+  box-shadow: 0 1px 0 0 rgba(59, 130, 246, 0.8);
+}
+
+/* --- 4. IMPROVED MODERN INPUTS (Smooth Curve & Animation) --- */
+.modern-input {
+    width: 100%;
+    /* Increase border-radius for a pill/curved shape */
+    border-radius: 20px;
+
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle default border */
+    padding: 14px 16px;
+    color: white;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+
+    /* Crucial for smooth animation */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- NEW: Input Group for Relative Positioning --- */
+.input-group {
+    position: relative;
+    margin-bottom: 30px; /* Adds spacing between the groups */
+}
+
+/* --- The Label (Starting Position: Inside the box) --- */
+.input-label {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    /* Center it vertically in the input field */
+    transform: translateY(-50%);
+
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    pointer-events: none; /* Allows clicks to go through to the input */
+
+    /* Crucial for smooth movement */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- ANIMATION: Label Movement (The Overlap Fix) --- */
+/* Selects the label when the input is focused OR when text is present */
+.modern-input:focus ~ .input-label,
+.modern-input:not(:placeholder-shown) ~ .input-label {
+    /* FIX 1: Raise the label slightly LESS to prevent overlap */
+    top: -5px;
+
+    left: 10px;
+    font-size: 11px;
+    padding: 0 5px;
+
+    /* FIX 2: Set background to transparent or match the card's GLASS background */
+    /* Using transparent ensures no hard edge from the background */
+    background: transparent;
+
+    /* Use a light box shadow to visually "mask" the line, or just rely on transparency */
+    box-shadow: none;
+
+    /* Keep color pure white when floating */
+    color: #ffffff;
+    z-index: 10;
+}
+
+.modern-input:focus {
+    background: rgba(0, 0, 0, 0.4);
+
+    /* Change border color on focus to the primary blue */
+    border-color: #3b82f6;
+
+    /* Add a subtle blue glow around the focused input */
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.modern-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Aurora background animation */
+@keyframes aurora {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 /* Smooth scrolling for mobile chat */
 .smooth-scroll {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+}
+
+/* Error box styling */
+.error-box {
+    background: rgba(239, 68, 68, 0.1); /* Very transparent red */
+    border: 1px solid rgba(239, 68, 68, 0.5); /* Visible border */
+    color: #fca5a5; /* Bright light red text */
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); /* Subtle glow */
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Button glow effect */
+.btn-primary {
+    /* Keep your gradient */
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    /* The Magic Glow */
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 6px 25px rgba(59, 130, 246, 0.6);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Role Selector */
+.role-selector {
+    margin-bottom: 30px;
+}
+
+/* Discord Section */
+.discord-box h4 {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.discord-box p {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.discord-box {
+    margin-bottom: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Discord Blurple button */
+.discord-join-btn {
+    background-color: #5865F2;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3);
+}
+
+.discord-join-btn:hover {
+    background-color: #7289da;
+    transform: scale(1.02);
+}
+
+/* Glowing orb for glass effect */
+.glowing-orb {
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(147, 51, 234, 0.4), rgba(79, 70, 229, 0.2));
+    filter: blur(80px);
+    opacity: 0.8;
+    z-index: -1;
+    animation: pulse 8s ease-in-out infinite;
 }

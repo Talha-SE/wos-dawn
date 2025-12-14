@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ChangeEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../components/Button'
 import Input from '../components/Input'
@@ -10,10 +10,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Crown,
+  CornerUpLeft,
   Languages,
   ListChecks,
   Loader2,
   Mic,
+  Paperclip,
   Send,
   Settings2,
   ShieldCheck,
@@ -25,7 +27,18 @@ import notificationMp3 from '../assets/room-message-notification.mp3'
 import { gentlyRequestNotificationPermission, showRoomNotification } from '../utils/notificationClient'
 
 type Room = { code: string; name: string; state: number; isOwner?: boolean }
-type Message = { _id: string; roomCode: string; senderEmail: string; senderId: string; senderName?: string; content: string; createdAt: string }
+type Message = {
+  _id: string
+  roomCode: string
+  senderEmail: string
+  senderId: string
+  senderName?: string
+  content: string
+  createdAt: string
+  replyToMessageId?: string
+  replyToContent?: string
+  replyToSenderName?: string
+}
 type JoinedRoomSummary = { code: string; name: string; state: number; lastMessageAt: string | null }
 
 type AllianceMember = {
@@ -34,6 +47,12 @@ type AllianceMember = {
   displayName: string
   role: 'owner' | 'member'
   joinedAt: string
+}
+
+type PendingAttachment = {
+  id: string
+  file: File
+  url: string
 }
 
 type TutorialSlide = {
@@ -166,8 +185,45 @@ export default function AllianceChatWindow() {
   const autoTranslatedRef = useRef<Set<string>>(new Set())
   const targetLanguageRef = useRef('')
   const [translatingBatch, setTranslatingBatch] = useState(false)
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [replyTo, setReplyTo] = useState<{ messageId: string; content: string; senderName: string } | null>(null)
+  const touchStartXRef = useRef<number | null>(null)
 
   const activeRouteCode = routeCode ? String(routeCode) : ''
+
+  function handleStartReply(msg: Message) {
+    const senderLabel = (msg.senderName && msg.senderName.trim()) || msg.senderEmail.split('@')[0]
+    const snippet = msg.content.length > 120 ? msg.content.slice(0, 117) + '…' : msg.content
+    setReplyTo({
+      messageId: msg._id,
+      content: snippet,
+      senderName: senderLabel
+    })
+    setTimeout(scrollToBottom, 50)
+  }
+
+  function handleTouchStart(e: any) {
+    if (e.touches && e.touches.length > 0) {
+      touchStartXRef.current = e.touches[0].clientX
+    }
+  }
+
+  function handleTouchEnd(msg: Message, e: any) {
+    const startX = touchStartXRef.current
+    if (startX == null || !e.changedTouches || e.changedTouches.length === 0) {
+      touchStartXRef.current = null
+      return
+    }
+    const endX = e.changedTouches[0].clientX
+    const deltaX = endX - startX
+    touchStartXRef.current = null
+
+    // Simple right-swipe to reply gesture
+    if (deltaX > 40) {
+      handleStartReply(msg)
+    }
+  }
 
   function getLastSeen(code: string): number {
     try {
@@ -1141,27 +1197,65 @@ export default function AllianceChatWindow() {
     const content = messageText.trim()
     console.log('Sending message:', content, 'to room:', joined.code)
     setSending(true)
+    const replyMeta = replyTo
     const optimistic: Message = {
       _id: `temp-${Date.now()}`,
       roomCode: joined.code,
       senderEmail: user?.email || 'You',
       senderId: 'me',
       content,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      replyToMessageId: replyMeta?.messageId,
+      replyToContent: replyMeta?.content,
+      replyToSenderName: replyMeta?.senderName
     }
     console.log('Adding optimistic message:', optimistic)
     setMessages((prev) => [...prev, optimistic])
     setMessageText('')
+    setReplyTo(null)
     scrollToBottom()
     try {
       console.log('Calling API to send message...')
-      const response = await api.post(`/alliance/rooms/${joined.code}/messages`, { content })
+      const response = await api.post(`/alliance/rooms/${joined.code}/messages`, {
+        content,
+        replyToMessageId: replyMeta?.messageId,
+        replyToContent: replyMeta?.content,
+        replyToSenderName: replyMeta?.senderName
+      })
       console.log('Message sent successfully, API response:', response.data)
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m._id !== optimistic._id))
     } finally {
       setSending(false)
     }
+  }
+
+  function handleAttachmentButtonClick() {
+    if (sending || transcribing) return
+    fileInputRef.current?.click()
+  }
+
+  function handleAttachmentsSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
+
+    const next: PendingAttachment[] = files.map((file) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+      file,
+      url: URL.createObjectURL(file)
+    }))
+
+    setAttachments((prev) => [...prev, ...next])
+
+    // Reset input so selecting the same file again still triggers change
+    event.target.value = ''
+  }
+
+  function removeAttachment(id: string) {
+    setAttachments((prev) => {
+      const remaining = prev.filter((att) => att.id !== id)
+      return remaining
+    })
   }
 
   // Keep list pinned to bottom when messages length changes
@@ -1789,7 +1883,11 @@ export default function AllianceChatWindow() {
                         </button>
                       )}
 
-                      <div className={`group max-w-[70%] sm:max-w-[60%] md:max-w-[52%] lg:max-w-[45%]`}>
+                      <div
+                      className={`group max-w-[70%] sm:max-w-[60%] md:max-w-[52%] lg:max-w-[45%]`}
+                      onTouchStart={handleTouchStart as any}
+                      onTouchEnd={(e) => handleTouchEnd(msg, e.nativeEvent)}
+                    >
                         {/* Sender label only at start of a block from same sender */}
                         {showSenderLabel && (
                           <div className={`text-sm md:text-base font-bold mb-1.5 px-1 drop-shadow-lg ${getUserColor(msg.senderEmail)}`}>
@@ -1807,6 +1905,19 @@ export default function AllianceChatWindow() {
                         >
                           <div className="flex items-end justify-between gap-3">
                             <div className="flex-1 min-w-0">
+                              {msg.replyToMessageId && msg.replyToContent && (
+                                <div className="mb-1.5 rounded-xl bg-black/5 border border-white/10 px-2.5 py-1.5 text-[10px] text-white/75">
+                                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-200">
+                                      <CornerUpLeft size={10} />
+                                      {msg.replyToSenderName || 'Reply'}
+                                    </span>
+                                  </div>
+                                  <div className="truncate">
+                                    {msg.replyToContent}
+                                  </div>
+                                </div>
+                              )}
                               {/* Original message */}
                               <div
                                 translate="no"
@@ -1851,39 +1962,50 @@ export default function AllianceChatWindow() {
                                 {time}
                               </span>
 
-                              {/* Translate button */}
-                              {targetLanguage && (
+                              {/* Translate + Reply controls */}
+                              <div className="flex items-center gap-1.5">
+                                {targetLanguage && (
+                                  <button
+                                    type="button"
+                                    onClick={() => translateMessage(msg._id, msg.content)}
+                                    disabled={translatingId === msg._id || !!pendingTranslations[msg._id]}
+                                    className={`w-6 h-6 rounded-full transition-all grid place-items-center relative ${
+                                      translations[msg._id]
+                                        ? 'bg-sky-600 text-white border border-sky-600 hover:bg-sky-700'
+                                        : pendingTranslations[msg._id]
+                                          ? 'bg-amber-400/90 text-amber-950 border border-amber-400 animate-pulse'
+                                          : 'bg-sky-100 text-sky-700 border border-sky-200 hover:bg-sky-200 hover:text-sky-900'
+                                    } active:scale-95 ${(translatingId === msg._id || pendingTranslations[msg._id]) ? 'cursor-wait' : ''}`}
+                                    title={
+                                      translations[msg._id]
+                                        ? 'Re-translate'
+                                        : pendingTranslations[msg._id]
+                                          ? `Retrying... (${pendingTranslations[msg._id].retryCount})`
+                                          : 'Translate'
+                                    }
+                                  >
+                                    {translatingId === msg._id ? (
+                                      <div className="w-3 h-3 border border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
+                                    ) : pendingTranslations[msg._id] ? (
+                                      <>
+                                        <Languages size={12} />
+                                        <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-ping" />
+                                      </>
+                                    ) : (
+                                      <Languages size={12} />
+                                    )}
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
-                                  onClick={() => translateMessage(msg._id, msg.content)}
-                                  disabled={translatingId === msg._id || !!pendingTranslations[msg._id]}
-                                  className={`w-6 h-6 rounded-full transition-all grid place-items-center relative ${
-                                    translations[msg._id]
-                                      ? 'bg-sky-600 text-white border border-sky-600 hover:bg-sky-700'
-                                      : pendingTranslations[msg._id]
-                                        ? 'bg-amber-400/90 text-amber-950 border border-amber-400 animate-pulse'
-                                        : 'bg-sky-100 text-sky-700 border border-sky-200 hover:bg-sky-200 hover:text-sky-900'
-                                  } active:scale-95 ${(translatingId === msg._id || pendingTranslations[msg._id]) ? 'cursor-wait' : ''}`}
-                                  title={
-                                    translations[msg._id]
-                                      ? 'Re-translate'
-                                      : pendingTranslations[msg._id]
-                                        ? `Retrying... (${pendingTranslations[msg._id].retryCount})`
-                                        : 'Translate'
-                                  }
+                                  onClick={() => handleStartReply(msg)}
+                                  className="w-6 h-6 rounded-full border border-sky-500/80 bg-sky-500/90 text-white hover:bg-sky-400 hover:border-sky-300 shadow-sm transition-all grid place-items-center active:scale-95"
+                                  title="Reply to this message"
                                 >
-                                  {translatingId === msg._id ? (
-                                    <div className="w-3 h-3 border border-emerald-500/70 border-t-transparent rounded-full animate-spin" />
-                                  ) : pendingTranslations[msg._id] ? (
-                                    <>
-                                      <Languages size={12} />
-                                      <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-ping" />
-                                    </>
-                                  ) : (
-                                    <Languages size={12} />
-                                  )}
+                                  <CornerUpLeft size={12} />
                                 </button>
-                              )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1969,86 +2091,150 @@ export default function AllianceChatWindow() {
                 <div
                   className="absolute inset-x-3 top-0 h-px opacity-0"
                 />
-                <div className="flex items-center gap-2.5 md:gap-3 min-w-0 px-3.5 md:px-5 py-2.5 md:py-3">
-                  {/* Voice Button */}
-                  <button
-                    type="button"
-                    onClick={toggleRecord}
-                    disabled={sending || transcribing}
-                    className={`flex-none h-10 w-10 md:h-[46px] md:w-[46px] rounded-full transition-all duration-200 grid place-items-center border ${
-                      recording
-                        ? 'border-red-500/50 bg-red-500/30 text-white shadow-[0_0_20px_rgba(248,113,113,0.35)] scale-105'
-                        : transcribing
-                          ? 'border-white/15 bg-white/8 text-white/45'
-                          : 'border-white/12 bg-white/8 text-white/70 hover:text-white hover:border-white/25 hover:bg-white/12 active:scale-[0.96]'
-                    }`}
-                    title={recording ? 'Stop recording' : 'Voice message'}
-                  >
-                    {transcribing ? (
-                      <div className="w-4 h-4 border-[1.5px] border-white/50 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Mic size={18} className={recording ? 'animate-pulse' : ''} />
-                    )}
-                  </button>
-
-                  {/* Input Field */}
-                  <div className="flex-1 min-w-0">
-                    <div
-                      className={`relative rounded-2xl transition-all duration-200 ${
-                        barActive ? 'bg-white/6 border border-white/12 shadow-inner shadow-slate-900/40' : 'bg-white/4 border border-white/8'
-                      }`}
-                    >
-                      <Input
-                        value={messageText}
-                        onChange={(e) => {
-                          setMessageText(e.target.value)
-                          if (e.target.value.trim()) emitTypingKeepAlive()
-                        }}
-                        onFocus={(e) => {
-                          setInputFocused(true)
-                          setTimeout(scrollToBottom, 50)
-                        }}
-                        onBlur={() => setInputFocused(false)}
-                        placeholder={transcribing ? 'Transcribing…' : 'Type a message…'}
-                        disabled={transcribing}
-                        name="chat-message"
-                        autoComplete="off"
-                        autoCorrect="on"
-                        autoCapitalize="sentences"
-                        inputMode="text"
-                        className="border-none bg-transparent text-white placeholder:text-white/45 focus:ring-0 h-10 md:h-11 text-sm md:text-[15px] px-3 md:px-4"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault()
-                            sendMessage()
-                          }
-                        }}
-                      />
-                      {transcribing && (
-                        <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2">
-                          <div className="w-4 h-4 border-[1.5px] border-cyan-400/40 border-t-cyan-200 rounded-full animate-spin" />
+                <div className="flex flex-col gap-2 min-w-0">
+                  {replyTo && (
+                    <div className="flex items-center justify-between rounded-2xl bg-slate-900/80 border border-sky-500/40 px-3 py-2 text-[11px]">
+                      <div className="min-w-0 mr-2">
+                        <div className="font-semibold text-sky-300 truncate">
+                          Replying to {replyTo.senderName}
                         </div>
-                      )}
+                        <div className="text-white/70 truncate">{replyTo.content}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReplyTo(null)}
+                        className="flex-none text-white/60 hover:text-white"
+                        aria-label="Cancel reply"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Send Button */}
-                  <button
-                    onClick={sendMessage}
-                    disabled={!messageText.trim() || sending}
-                    className={`flex-none h-10 w-10 md:h-[46px] md:w-[46px] rounded-full transition-all duration-200 grid place-items-center border ${
-                      messageText.trim() && !sending
-                        ? 'border-transparent bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500 text-white shadow-[0_0_22px_rgba(59,130,246,0.4)] hover:scale-105 active:scale-[0.96]'
-                        : 'border-white/12 bg-white/6 text-white/35 cursor-not-allowed'
-                    }`}
-                    title={messageText.trim() ? 'Send message' : 'Start typing to send'}
-                  >
-                    {sending ? (
-                      <div className="w-4 h-4 border-[1.5px] border-white/40 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <Send size={18} />
-                    )}
-                  </button>
+                  {attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 px-0.5 md:px-1 pb-0.5">
+                      {attachments.map((att) => (
+                        <div
+                          key={att.id}
+                          className="inline-flex items-center gap-1 rounded-full bg-slate-900/70 border border-white/12 px-2 py-1 max-w-[60%] md:max-w-[40%]"
+                        >
+                          <Paperclip size={12} className="text-sky-300 flex-none" />
+                          <span className="text-[10px] text-white/75 truncate">
+                            {att.file.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(att.id)}
+                            className="ml-0.5 flex-none text-white/50 hover:text-white/80"
+                            aria-label="Remove attachment"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2.5 md:gap-3 min-w-0">
+                    {/* Voice Button */}
+                    <button
+                      type="button"
+                      onClick={toggleRecord}
+                      disabled={sending || transcribing}
+                      className={`flex-none h-10 w-10 md:h-[46px] md:w-[46px] rounded-full transition-all duration-200 grid place-items-center border ${
+                        recording
+                          ? 'border-red-500/50 bg-red-500/30 text-white shadow-[0_0_20px_rgba(248,113,113,0.35)] scale-105'
+                          : transcribing
+                            ? 'border-white/15 bg-white/8 text-white/45'
+                            : 'border-white/12 bg-white/8 text-white/70 hover:text-white hover:border-white/25 hover:bg-white/12 active:scale-[0.96]'
+                      }`}
+                      title={recording ? 'Stop recording' : 'Voice message'}
+                    >
+                      {transcribing ? (
+                        <div className="w-4 h-4 border-[1.5px] border-white/50 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Mic size={18} className={recording ? 'animate-pulse' : ''} />
+                      )}
+                    </button>
+
+                    {/* Attachment Button */}
+                    <button
+                      type="button"
+                      onClick={handleAttachmentButtonClick}
+                      disabled={sending}
+                      className="flex-none h-9 w-9 md:h-10 md:w-10 rounded-full grid place-items-center border border-white/12 bg-white/6 text-white/65 hover:text-white hover:border-white/25 hover:bg-white/12 active:scale-[0.96] transition-all"
+                      title="Attach files or images"
+                    >
+                      <Paperclip size={16} />
+                    </button>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleAttachmentsSelected}
+                    />
+
+                    {/* Input Field */}
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className={`relative rounded-2xl transition-all duration-200 ${
+                          barActive ? 'bg-white/6 border border-white/12 shadow-inner shadow-slate-900/40' : 'bg-white/4 border border-white/8'
+                        }`}
+                      >
+                        <Input
+                          value={messageText}
+                          onChange={(e) => {
+                            setMessageText(e.target.value)
+                            if (e.target.value.trim()) emitTypingKeepAlive()
+                          }}
+                          onFocus={(e) => {
+                            setInputFocused(true)
+                            setTimeout(scrollToBottom, 50)
+                          }}
+                          onBlur={() => setInputFocused(false)}
+                          placeholder={transcribing ? 'Transcribing…' : 'Type a message…'}
+                          disabled={transcribing}
+                          name="chat-message"
+                          autoComplete="off"
+                          autoCorrect="on"
+                          autoCapitalize="sentences"
+                          inputMode="text"
+                          className="border-none bg-transparent text-white placeholder:text-white/45 focus:ring-0 h-10 md:h-11 text-sm md:text-[15px] px-3 md:px-4"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              sendMessage()
+                            }
+                          }}
+                        />
+                        {transcribing && (
+                          <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2">
+                            <div className="w-4 h-4 border-[1.5px] border-cyan-400/40 border-t-cyan-200 rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Send Button */}
+                    <button
+                      onClick={sendMessage}
+                      disabled={!messageText.trim() || sending}
+                      className={`flex-none h-10 w-10 md:h-[46px] md:w-[46px] rounded-full transition-all duration-200 grid place-items-center border ${
+                        messageText.trim() && !sending
+                          ? 'border-transparent bg-gradient-to-br from-indigo-500 via-blue-500 to-cyan-500 text-white shadow-[0_0_22px_rgba(59,130,246,0.4)] hover:scale-105 active:scale-[0.96]'
+                          : 'border-white/12 bg-white/6 text-white/35 cursor-not-allowed'
+                      }`}
+                      title={messageText.trim() ? 'Send message' : 'Start typing to send'}
+                    >
+                      {sending ? (
+                        <div className="w-4 h-4 border-[1.5px] border-white/40 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Send size={18} />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

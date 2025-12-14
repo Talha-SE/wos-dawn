@@ -483,7 +483,12 @@ router.get('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) =
 router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) => {
   try {
     const code = String(req.params.code)
-    const { content } = req.body as { content: string }
+    const { content, replyToMessageId, replyToContent, replyToSenderName } = req.body as {
+      content: string
+      replyToMessageId?: string
+      replyToContent?: string
+      replyToSenderName?: string
+    }
     if (!content || !content.trim()) return res.status(400).json({ message: 'Message cannot be empty' })
     const trimmed = content.trim()
     if (trimmed.length > 1000) return res.status(400).json({ message: 'Message too long' })
@@ -498,7 +503,10 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
       roomCode: code,
       senderId: req.userId!,
       senderEmail: user.email,
-      content: trimmed
+      content: trimmed,
+      replyToMessageId: replyToMessageId || undefined,
+      replyToContent: replyToContent || undefined,
+      replyToSenderName: replyToSenderName || undefined
     })
 
     const messagePayload = {
@@ -510,7 +518,10 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
         senderId: doc.senderId,
         senderName: (user.gameName && user.gameName.trim()) || String(user.email).split('@')[0],
         content: doc.content,
-        createdAt: doc.createdAt
+        createdAt: doc.createdAt,
+        replyToMessageId: doc.replyToMessageId,
+        replyToContent: doc.replyToContent,
+        replyToSenderName: doc.replyToSenderName
       }
     }
     

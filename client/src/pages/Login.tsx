@@ -62,13 +62,13 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
-      {/* Background Pattern */}
-      <div className="fixed inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjAzKSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-40" />
-      
-      {/* Animated Gradient Orbs */}
-      <div className="fixed top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-      <div className="fixed bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(circle_at_10%_20%,rgba(37,99,235,0.2)_0%,transparent_50%),radial-gradient(circle_at_90%_80%,rgba(6,182,212,0.16)_0%,transparent_50%),radial-gradient(circle_at_50%_50%,rgba(56,189,248,0.12)_0%,transparent_50%)] relative overflow-hidden">
+      {/* Animated Aurora Background */}
+      <div className="fixed inset-0 -z-10">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-[rgba(37,99,235,0.15)] rounded-full blur-3xl animate-[pulse_8s_ease-in-out_infinite]" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[rgba(6,182,212,0.15)] rounded-full blur-3xl animate-[pulse_10s_ease-in-out_1s_infinite]" />
+        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-[rgba(168,85,247,0.12)] rounded-full blur-3xl animate-[pulse_12s_ease-in-out_2s_infinite]" />
+      </div>
       
       <div className="fixed top-4 right-4 z-40">
         <TranslateSwitcher />
@@ -76,91 +76,84 @@ export default function Login() {
       
       <div className="relative w-full max-w-md">
         {/* Card */}
-        <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/90 via-slate-900/80 to-slate-900/90 backdrop-blur-xl shadow-2xl p-8">
+        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-filter backdrop-blur-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] p-8 relative">
+          {/* Glowing orb behind card for glass effect */}
+          <div className="glowing-orb" style={{top: '-60px', right: '-60px'}}></div>
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-4 shadow-lg">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 mb-4 shadow-[0_8px_22px_rgba(59,130,246,0.6)]">
               <span className="text-2xl font-bold text-white">WD</span>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-white/60 text-sm">Sign in to continue to WOS-DAWN</p>
+            <h1 className="text-3xl font-bold text-white mb-2 font-[Inter]">Welcome Back</h1>
+            <p className="text-white/70 text-sm font-[Inter]">Sign in to continue to WOS-DAWN</p>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-5">
-            {/* Role Selector */}
-            <div>
+            {/* Role Selector - sliding pill toggle */}
+            <div className="role-selector">
               <label className="text-sm font-medium text-white/80 mb-2 block">Select Role</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className={`toggle-pill ${role === 'admin' ? 'right' : ''}`} role="tablist" aria-label="Select role">
+                <div className={`slider`} />
                 <button
                   type="button"
                   onClick={() => setRole('user')}
-                  className={`relative rounded-xl border px-4 py-3 font-medium transition-all duration-200 ${
-                    role === 'user'
-                      ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-blue-500/50 text-white shadow-lg'
-                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 hover:border-white/20'
-                  }`}
+                  role="tab"
+                  aria-selected={role === 'user'}
+                  className={`option ${role === 'user' ? 'active' : ''}`}
                 >
-                  {role === 'user' && (
-                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-                  )}
                   User
                 </button>
                 <button
                   type="button"
                   onClick={() => setRole('admin')}
-                  className={`relative rounded-xl border px-4 py-3 font-medium transition-all duration-200 ${
-                    role === 'admin'
-                      ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border-blue-500/50 text-white shadow-lg'
-                      : 'bg-white/5 border-white/10 text-white/60 hover:text-white hover:bg-white/10 hover:border-white/20'
-                  }`}
+                  role="tab"
+                  aria-selected={role === 'admin'}
+                  className={`option ${role === 'admin' ? 'active' : ''}`}
                 >
-                  {role === 'admin' && (
-                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.6)]" />
-                  )}
                   Admin
                 </button>
               </div>
             </div>
 
-            {/* Email Field */}
-            <div>
-              <label className="text-sm font-medium text-white/80 mb-2 block">Email Address</label>
+            {/* Email Field (floating label) */}
+            <div className="input-group">
               <Input
                 type="email"
+                id="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); try { localStorage.setItem('last_email', e.target.value) } catch {} }}
                 required
-                placeholder="Enter your email"
-                className="bg-white/5 border-white/10 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+                placeholder=" "
+                className="modern-input w-full"
               />
+              <label htmlFor="email" className="input-label">Email Address</label>
             </div>
 
-            {/* Password Field */}
-            <div>
-              <label className="text-sm font-medium text-white/80 mb-2 block">Password</label>
-              <div className="relative">
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="Enter your password"
-                  className="pr-12 bg-white/5 border-white/10 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center justify-center px-3 text-white/50 hover:text-white transition-colors"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
+            {/* Password Field (floating label) */}
+            <div className="input-group" style={{position: 'relative'}}>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder=" "
+                className="modern-input w-full pr-12"
+              />
+              <label htmlFor="password" className="input-label">Password</label>
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-0 top-1/2 transform -translate-y-1/2 flex items-center justify-center px-3 text-white/50 hover:text-white transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
             {/* Admin Notice */}
             {role === 'admin' && (
-              <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 mb-5">
                 <p className="text-sm text-blue-300/90 flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                   You will be logged in as an administrator if your account has admin privileges.
@@ -170,7 +163,7 @@ export default function Login() {
 
             {/* Error Message */}
             {error && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+              <div className="error-box">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
                 {error}
               </div>
@@ -180,7 +173,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium py-3 rounded-xl shadow-lg transition-all duration-200"
+              className="w-full btn-primary text-white font-medium py-3 rounded-xl transition-all duration-200"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -194,23 +187,23 @@ export default function Login() {
           </form>
 
           {/* Discord Invite */}
-          <div className="mt-6 rounded-2xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 via-slate-900/60 to-purple-500/10 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="mt-6 rounded-xl bg-white/5 backdrop-blur-sm border border-white/5 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 discord-box">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-sky-500 flex items-center justify-center shadow-[0_8px_22px_rgba(59,130,246,0.6)]">
-                <span className="text-lg">💬</span>
+              <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center border border-white/10">
+                <span className="text-base opacity-80">💬</span>
               </div>
               <div>
-                <div className="text-sm font-semibold text-white">Join the WOS Dawn Discord</div>
-                <div className="text-xs text-white/60">Chat with other commanders, get updates and share strategies.</div>
+                <div className="text-sm font-medium">Join the WOS Dawn Discord</div>
+                <div className="text-xs">Chat with other commanders</div>
               </div>
             </div>
             <a
               href="https://discord.gg/Q8J5sgWNb4"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold px-4 py-2 shadow-[0_10px_24px_rgba(59,130,246,0.7)] transition-transform hover:translate-y-px active:scale-95"
+              className="discord-join-btn"
             >
-              Open Discord
+              Join
             </a>
           </div>
 
@@ -226,7 +219,7 @@ export default function Login() {
         </div>
 
         {/* Brand Footer */}
-        <div className="mt-4 text-center text-xs text-white/40">
+        <div className="mt-8 text-center text-xs text-white/20">
           WOS-DAWN © {new Date().getFullYear()}
         </div>
       </div>

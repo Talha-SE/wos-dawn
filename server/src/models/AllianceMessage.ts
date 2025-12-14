@@ -6,6 +6,9 @@ export interface AllianceMessageDoc extends Document {
   senderEmail: string
   content: string
   createdAt: Date
+  replyToMessageId?: string
+  replyToContent?: string
+  replyToSenderName?: string
 }
 
 const AllianceMessageSchema = new Schema<AllianceMessageDoc>({
@@ -13,7 +16,10 @@ const AllianceMessageSchema = new Schema<AllianceMessageDoc>({
   senderId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   senderEmail: { type: String, required: true },
   content: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  replyToMessageId: { type: String },
+  replyToContent: { type: String },
+  replyToSenderName: { type: String }
 })
 
 AllianceMessageSchema.index({ roomCode: 1, createdAt: -1 })
