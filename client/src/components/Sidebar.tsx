@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { User, Menu, Shield, MessageSquare, ChevronDown, X, LogOut, Headphones } from 'lucide-react'
+import { User, Menu, Shield, MessageSquare, ChevronDown, ChevronLeft, ChevronRight, X, LogOut, Headphones } from 'lucide-react'
 import api from '../services/api'
 import logo from '../assets/wos-dawn.png'
 import { useAuth } from '../state/AuthContext'
@@ -223,11 +223,11 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   }, [loadRooms])
 
   return (
-    <aside className={`fixed left-0 top-0 bottom-0 z-[160] md:z-20 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-white/10 shadow-2xl transition-all duration-300 ${collapsed ? 'md:w-20' : 'md:w-64'} w-64 transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+    <aside className={`fixed left-0 top-0 bottom-0 z-[160] md:z-20 sidebar-refined shadow-2xl sidebar-transition ${collapsed ? 'md:w-20' : 'md:w-64'} w-64 transform md:transform-none ${mobileOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
       <div className="h-full flex flex-col overflow-hidden">
         <audio ref={audioRef} className="hidden" preload="auto" src={notificationMp3} />
         {/* Header */}
-        <div className="flex-none px-4 py-5 border-b border-white/10 bg-gradient-to-r from-slate-800/50 to-slate-900/50">
+        <div className="flex-none px-4 py-4 border-b border-white/5 bg-gradient-to-r from-slate-950/80 to-indigo-1000/80">
           <div className="flex items-center justify-between">
             {!collapsed && (
               <div className="flex items-center gap-3">
@@ -235,32 +235,26 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                   <img
                     src={logo}
                     alt="WOS Dawn"
-                    className="h-11 w-11 rounded-2xl object-cover shadow-xl shadow-sky-500/40 ring-2 ring-sky-400/80"
+                    className="h-10 w-10 rounded-xl object-cover shadow-lg shadow-blue-500/20 ring-1 ring-blue-400/30"
                   />
-                  <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.8)] border-2 border-slate-900" />
                 </div>
-                <div>
-                  <div className="font-semibold text-base text-white">WOS Dawn</div>
-                  <div className="text-[10px] uppercase tracking-[0.15em] text-sky-300/80 font-medium">Command Center</div>
-                </div>
+                <div className="font-semibold text-base text-white">WOS Dawn</div>
               </div>
             )}
-            {collapsed && (
-              <div className="mx-auto relative">
-                <img
-                  src={logo}
-                  alt="WOS Dawn"
-                  className="h-11 w-11 rounded-2xl object-cover shadow-xl shadow-sky-500/40 ring-2 ring-sky-400/80"
-                />
-                <div className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.8)] border-2 border-slate-900" />
-              </div>
-            )}
+            {/* When collapsed we intentionally hide the logo to only show the toggle */}
             <button
               onClick={() => { if (mobileOpen && onMobileClose) onMobileClose(); else onToggle() }}
-              className={`${collapsed ? 'hidden md:grid' : ''} h-9 w-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/30 text-white/70 hover:text-white transition-all grid place-items-center active:scale-95`}
-              aria-label="Toggle sidebar"
+              className={`${collapsed ? 'hidden md:grid' : ''} h-9 w-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/30 text-white/70 hover:text-white transition-all grid place-items-center active:scale-95 sidebar-hover-effect`}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
-              <Menu size={16} />
+              {collapsed ? (
+                <ChevronRight size={18} className="transition-transform duration-300" />
+              ) : (
+                <div className="flex items-center gap-0.5">
+                  <ChevronLeft size={16} />
+                  <ChevronLeft size={16} className="-ml-3" />
+                </div>
+              )}
             </button>
             {/* Mobile close button */}
             {mobileOpen && (
@@ -276,8 +270,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         </div>
 
         {/* Navigation */}
-        <nav className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20 px-3 py-4 ${collapsed ? 'flex flex-col items-center gap-2' : 'flex flex-col gap-1'}`}>
-          {!collapsed && <div className="px-3 py-1.5 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Main</div>}
+        <nav className={`flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent hover:scrollbar-thumb-white/20 px-3 py-4 ${collapsed ? 'flex flex-col items-center gap-2' : 'flex flex-col gap-0.5'}`}>
+          {!collapsed && <div className="px-3 py-2 mb-1 text-xs text-gray-400/80 font-medium transition-opacity duration-250">Main</div>}
           <NavItem
             to="/dashboard/profile"
             active={pathname.includes('/profile')}
@@ -297,33 +291,20 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 label="Alliance Chat"
                 onNavigate={onMobileClose}
               />
-              <NavItem
-                to="/dashboard/alliance-chat"
-                active={pathname.startsWith('/dashboard/alliance-chat/')}
-                icon={<MessageSquare size={18} />}
-                collapsed={collapsed}
-                label="Joined Rooms"
-                onNavigate={onMobileClose}
-              />
             </>
           ) : (
             <div className="flex flex-col gap-1 mt-4">
-              <div className="px-3 py-1.5 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Alliance</div>
+              <div className="px-3 py-2 mb-1 text-xs text-gray-400/80 font-medium transition-opacity duration-250">Alliance</div>
               <NavItem
                 to="/dashboard/alliance-chat"
                 active={pathname === '/dashboard/alliance-chat'}
                 icon={<MessageSquare size={18} />}
                 collapsed={false}
-                label={
-                  <span className="flex items-center gap-2">
-                    <span>Alliance Chat</span>
-                    <span className="ml-1 text-sm leading-none animate-pulse" aria-hidden="true">🔥</span>
-                  </span>
-                }
+                label="Alliance Chat"
                 onNavigate={onMobileClose}
               />
               <button
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${pathname.startsWith('/dashboard/alliance-chat/') ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white border border-blue-500/20 shadow-lg shadow-blue-500/5' : 'text-white/80 hover:text-white hover:bg-white/5'} justify-between`}
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all sidebar-hover-effect ${pathname.startsWith('/dashboard/alliance-chat/') ? 'text-sky-100 drop-shadow-[0_0_10px_rgba(56,189,248,0.35)]' : 'text-white/80'} justify-between`}
                 onClick={() => setOpenJoined((v) => !v)}
                 aria-expanded={openJoined}
               >
@@ -334,7 +315,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 <span className={`transition-transform duration-200 ${openJoined ? 'rotate-180' : ''}`}><ChevronDown size={14} /></span>
               </button>
               {openJoined && (
-                <div className="pl-6 flex flex-col gap-0.5 mt-1 text-white">
+                <div className="pl-6 flex flex-col gap-0.5 mt-1 text-white transition-all duration-250">
                   {loadingRooms && rooms.length === 0 && (
                     <div className="px-3 py-2 text-sm text-white/60 animate-pulse">Loading rooms…</div>
                   )}
@@ -390,7 +371,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             </div>
           )}
 
-          {!collapsed && <div className="px-3 py-1.5 mt-4 mb-1 text-[10px] uppercase tracking-[0.15em] text-blue-400/60 font-semibold">Utilities</div>}
+          {!collapsed && <div className="px-3 py-2 mt-4 mb-1 text-xs text-gray-400/80 font-medium transition-opacity duration-250">Utilities</div>}
           <NavItem
             to="/dashboard/svs"
             active={pathname.includes('/svs')}
@@ -404,12 +385,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             active={pathname.includes('/chat-ai')}
             icon={<MessageSquare size={18} />}
             collapsed={collapsed}
-            label={
-              <span className="flex items-center gap-2">
-                <span>Chat AI</span>
-                <span className="ml-1 text-sm leading-none animate-pulse" aria-hidden="true">🔥</span>
-              </span>
-            }
+            label="Chat AI"
             onNavigate={onMobileClose}
           />
           <NavItem
@@ -417,12 +393,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             active={pathname.includes('/contact-admin')}
             icon={<Headphones size={18} />}
             collapsed={collapsed}
-            label={
-              <span className="flex items-center gap-2">
-                <span>Contact Admin</span>
-                <span className="ml-1 text-sm leading-none animate-pulse" aria-hidden="true">🔥</span>
-              </span>
-            }
+            label="Contact Admin"
             onNavigate={onMobileClose}
           />
           
@@ -433,7 +404,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           {collapsed ? (
             <button
               onClick={handleLogout}
-              className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-500/20 to-red-600/10 hover:from-red-500/30 hover:to-red-600/20 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 transition-all grid place-items-center shadow-lg hover:shadow-red-500/20 active:scale-95"
+              className="w-12 h-12 mx-auto rounded-xl hover:bg-white/5 text-white/80 hover:text-white transition-all grid place-items-center"
               title="Logout"
               aria-label="Logout"
             >
@@ -442,7 +413,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           ) : (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-br from-red-500/20 to-red-600/10 hover:from-red-500/30 hover:to-red-600/20 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 transition-all shadow-lg hover:shadow-red-500/20 active:scale-95 font-medium"
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-white/80 hover:text-white transition-all font-medium"
               aria-label="Logout"
             >
               <LogOut size={18} />
@@ -460,23 +431,28 @@ function NavItem({ to, active, icon, label, collapsed, onNavigate, title }: { to
     return (
       <Link
         to={to}
-        className={`grid place-items-center w-12 h-12 rounded-xl transition-all ${active ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/15 text-white border border-blue-500/30 shadow-lg shadow-blue-500/10' : 'text-white/70 hover:text-white hover:bg-white/10 border border-white/10'}`}
+        className={`relative grid place-items-center w-12 h-12 rounded-lg transition-all sidebar-hover-effect ${active ? 'text-sky-100 drop-shadow-[0_0_10px_rgba(56,189,248,0.35)]' : 'text-white/70'}`}
         onClick={onNavigate}
         title={title || (typeof label === 'string' ? label : undefined)}
       >
         {icon}
+        {active && (
+          <span className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full bg-gradient-to-b from-sky-400 via-indigo-400 to-fuchsia-500 shadow-[0_0_12px_rgba(167,139,250,0.55)]"></span>
+        )}
       </Link>
     )
   }
   return (
     <Link
       to={to}
-      className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all overflow-hidden ${active ? 'bg-gradient-to-r from-blue-500/15 to-purple-500/10 text-white' : 'text-white/80 hover:text-white hover:bg-white/5'}`}
+      className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all overflow-hidden sidebar-hover-effect ${active ? 'text-sky-100 drop-shadow-[0_0_10px_rgba(56,189,248,0.35)]' : 'text-white/80'}`}
       onClick={onNavigate}
     >
-      <span className={`absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full transition-all ${active ? 'bg-gradient-to-b from-blue-500 to-purple-500 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : 'bg-transparent group-hover:bg-white/20'}`} />
-      <span className="grid place-items-center shrink-0 relative z-10">{icon}</span>
-      <span className="font-medium relative z-10">{label}</span>
+      <span className="grid place-items-center shrink-0 relative z-10 transition-transform duration-200 group-hover:scale-110">{icon}</span>
+      <span className="font-medium relative z-10 transition-opacity duration-200">{label}</span>
+      {active && (
+        <span className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full bg-gradient-to-b from-sky-400 via-indigo-400 to-fuchsia-500 shadow-[0_0_12px_rgba(167,139,250,0.55)]"></span>
+      )}
     </Link>
   )
 }
