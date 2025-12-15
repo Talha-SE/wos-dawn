@@ -27,7 +27,10 @@ export default {
       animation: {
         float: 'float 10s ease-in-out infinite',
         shimmer: 'shimmer 2.5s linear infinite',
-        fadeUp: 'fadeUp 0.6s ease forwards'
+        fadeUp: 'fadeUp 0.6s ease forwards',
+        wave1: 'wave1 0.8s ease-in-out infinite',
+        wave2: 'wave2 0.8s ease-in-out infinite',
+        wave3: 'wave3 0.8s ease-in-out infinite'
       },
       keyframes: {
         float: {
@@ -41,6 +44,18 @@ export default {
         fadeUp: {
           '0%': { opacity: 0, transform: 'translateY(12px)' },
           '100%': { opacity: 1, transform: 'translateY(0)' }
+        },
+        wave1: {
+          '0%, 100%': { height: '0.75rem' },
+          '50%': { height: '1rem' }
+        },
+        wave2: {
+          '0%, 100%': { height: '1rem' },
+          '50%': { height: '1.25rem' }
+        },
+        wave3: {
+          '0%, 100%': { height: '1.25rem' },
+          '50%': { height: '1.5rem' }
         }
       },
       backdropBlur: {

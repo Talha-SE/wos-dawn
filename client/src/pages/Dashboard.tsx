@@ -20,7 +20,7 @@ import { Menu, LogOut, MessageSquare } from 'lucide-react'
 export default function Dashboard() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [showDiscordModal, setShowDiscordModal] = useState(true)
+  const [showDiscordModal, setShowDiscordModal] = useState(false)
   const { user, logout } = useAuth()
   const nav = useNavigate()
   const location = useLocation()
@@ -201,7 +201,11 @@ export default function Dashboard() {
               </a>
               <button
                 type="button"
-                onClick={() => setShowDiscordModal(false)}
+                onClick={() => {
+                  setShowDiscordModal(false)
+                  // Update localStorage to track when the modal was last shown
+                  localStorage.setItem('discordModalLastShown', new Date().toISOString())
+                }}
                 className="text-sm text-white/70 hover:text-white px-3 py-2 rounded-lg hover:bg-white/10 transition-colors"
               >
                 Maybe later

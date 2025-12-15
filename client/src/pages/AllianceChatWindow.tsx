@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Crown,
   CornerUpLeft,
+  Download,
+  FileIcon,
   Languages,
   ListChecks,
   Loader2,
@@ -21,7 +23,8 @@ import {
   ShieldCheck,
   UserMinus,
   Users,
-  X
+  X,
+  ZoomIn
 } from 'lucide-react'
 import notificationMp3 from '../assets/room-message-notification.mp3'
 import { gentlyRequestNotificationPermission, showRoomNotification } from '../utils/notificationClient'
@@ -33,7 +36,13 @@ type Message = {
   senderEmail: string
   senderId: string
   senderName?: string
-  content: string
+  content?: string
+  audioUrl?: string
+  audioDuration?: number
+  fileUrl?: string
+  fileName?: string
+  fileType?: string
+  fileSize?: number
   createdAt: string
   replyToMessageId?: string
   replyToContent?: string
@@ -107,6 +116,308 @@ const tutorialSlides: TutorialSlide[] = [
 
 const ALLIANCE_ROOMS_CACHE_KEY = 'wos_alliance_joined_rooms_v1'
 const ALLIANCE_MESSAGES_CACHE_PREFIX = 'wos_alliance_room_messages_v1_'
+
+// Helper to resolve server-hosted asset URLs correctly.
+function resolveAssetUrl(url: string) {
+  if (!url) return url
+  if (/^https?:\/\//i.test(url)) return url
+  if (url.startsWith('/')) {
+    // Prefer using API base origin but strip any trailing `/api` path
+    const apiBase = String(api.defaults.baseURL || '')
+    const withoutApi = apiBase.replace(/\/api\/?$/, '')
+    if (withoutApi) return `${withoutApi}${url}`
+    return `${window.location.origin}${url}`
+  }
+  return url
+}
+
+// Voice Message Player Component - Redesigned Discord-style
+const VoiceMessagePlayer = ({ audioUrl, duration, isMine }: { audioUrl: string; duration?: number; isMine: boolean }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const togglePlay = useCallback(async () => {
+    if (isLoading) return;
+
+    if (isPlaying) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setIsPlaying(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
+      const finalAudioUrl = resolveAssetUrl(audioUrl);
+      const audio = new Audio(finalAudioUrl);
+      audioRef.current = audio;
+
+      audio.ontimeupdate = () => {
+        setCurrentTime(audio.currentTime);
+      };
+
+      audio.onplaying = () => {
+        setIsPlaying(true);
+        setIsLoading(false);
+      };
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+        }
+      };
+
+      audio.onpause = () => {
+        setIsPlaying(false);
+      };
+
+      audio.onerror = () => {
+        setError('Failed to play audio');
+        setIsPlaying(false);
+        setIsLoading(false);
+      };
+
+      await audio.play();
+    } catch (err) {
+      setError('Failed to play audio');
+      setIsPlaying(false);
+      setIsLoading(false);
+    }
+  }, [audioUrl, isPlaying, isLoading]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const formatTime = (time: number) => {
+    const mins = Math.floor(time / 60);
+    const secs = Math.floor(time % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const displayDuration = duration || audioRef.current?.duration || 0;
+  const progress = displayDuration > 0 ? (currentTime / displayDuration) * 100 : 0;
+
+  return (
+    <div className={`flex items-center gap-3 min-w-[240px] max-w-[320px] p-2.5 rounded-xl transition-all duration-200 ${
+      isMine ? 'bg-white/10 backdrop-blur-sm' : 'bg-slate-900/30 backdrop-blur-sm'
+    }`}>
+      <button
+        onClick={togglePlay}
+        disabled={isLoading}
+        className={`flex-none w-10 h-10 rounded-full transition-all duration-200 flex items-center justify-center ${
+          isLoading ? 'cursor-wait opacity-70' : 'hover:scale-105 active:scale-95'
+        } ${
+          isMine 
+            ? 'bg-white text-sky-600 hover:bg-white/90' 
+            : 'bg-sky-500 text-white hover:bg-sky-400'
+        }`}
+        title={isPlaying ? 'Pause' : 'Play'}
+      >
+        {isLoading ? (
+          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        ) : isPlaying ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+            <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="7 4 19 12 7 20 7 4"></polygon>
+          </svg>
+        )}
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isMine ? 'text-white/70' : 'text-slate-700'}>
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" x2="12" y1="19" y2="22"></line>
+          </svg>
+          <span className={`text-xs font-medium ${isMine ? 'text-white/80' : 'text-slate-700'}`}>
+            Voice Message
+          </span>
+          <span className={`ml-auto text-[10px] font-mono ${isMine ? 'text-white/60' : 'text-slate-500'}`}>
+            {isPlaying ? formatTime(currentTime) : formatTime(displayDuration)}
+          </span>
+        </div>
+        
+        <div className={`h-1.5 rounded-full overflow-hidden ${isMine ? 'bg-white/20' : 'bg-slate-300/50'}`}>
+          <div 
+            className={`h-full rounded-full transition-all duration-100 ${isMine ? 'bg-white' : 'bg-sky-500'}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// File Message Component
+const FileMessage = ({ 
+  fileUrl, 
+  fileName, 
+  fileType, 
+  fileSize, 
+  isMine,
+  onImagePreview 
+}: { 
+  fileUrl: string; 
+  fileName: string; 
+  fileType?: string; 
+  fileSize?: number; 
+  isMine: boolean;
+  onImagePreview: (url: string) => void;
+}) => {
+  const isImage = fileType?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(fileName);
+  
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+  };
+
+  const getFileIcon = () => {
+    if (isImage) return '🖼️';
+    if (fileType?.includes('pdf')) return '📄';
+    if (fileType?.includes('word') || fileType?.includes('document')) return '📝';
+    if (fileType?.includes('sheet') || fileType?.includes('excel')) return '📊';
+    if (fileType?.includes('video')) return '🎥';
+    if (fileType?.includes('audio')) return '🎵';
+    if (fileType?.includes('zip') || fileType?.includes('rar')) return '🗜️';
+    return '📎';
+  };
+
+  const handleClick = () => {
+    const finalFileUrl = resolveAssetUrl(fileUrl)
+
+    if (isImage) {
+      onImagePreview(finalFileUrl);
+    } else {
+      // Download file
+      const link = document.createElement('a');
+      link.href = finalFileUrl;
+      link.download = fileName;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  if (isImage) {
+    return (
+      <div 
+        className="group relative cursor-pointer rounded-lg overflow-hidden max-w-xs animate-in fade-in duration-300"
+        onClick={handleClick}
+      >
+        <img 
+          src={resolveAssetUrl(fileUrl)}
+          alt={fileName}
+          className="w-full h-auto max-h-64 object-cover transition-transform duration-200 group-hover:scale-105"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white/90 backdrop-blur-sm rounded-full p-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-900">
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"></path>
+            </svg>
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+          <p className="text-white text-xs truncate">{fileName}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`flex items-center gap-3 p-3 rounded-xl min-w-[200px] max-w-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+        isMine 
+          ? 'bg-white/10 hover:bg-white/15 backdrop-blur-sm' 
+          : 'bg-slate-900/30 hover:bg-slate-900/40 backdrop-blur-sm'
+      }`}
+    >
+      <div className={`flex-none text-3xl`}>
+        {getFileIcon()}
+      </div>
+      <div className="flex-1 min-w-0 text-left">
+        <p className={`text-sm font-medium truncate ${isMine ? 'text-white' : 'text-slate-900'}`}>
+          {fileName}
+        </p>
+        <p className={`text-xs ${isMine ? 'text-white/60' : 'text-slate-600'}`}>
+          {formatFileSize(fileSize)} • Click to download
+        </p>
+      </div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isMine ? 'text-white/60' : 'text-slate-600'}>
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" x2="12" y1="15" y2="3"></line>
+      </svg>
+    </button>
+  );
+};
+
+// Image Preview Modal
+const ImagePreviewModal = ({ imageUrl, onClose }: { imageUrl: string; onClose: () => void }) => {
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        aria-label="Close preview"
+      >
+        <X size={20} className="text-white" />
+      </button>
+      
+      <div className="max-w-[90vw] max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+        <img 
+          src={imageUrl} 
+          alt="Preview" 
+          className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl animate-in zoom-in duration-300"
+        />
+      </div>
+
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-md rounded-full px-4 py-2 border border-white/20">
+        <p className="text-white text-sm">Click anywhere to close • Press ESC</p>
+      </div>
+    </div>
+  );
+};
 
 export default function AllianceChatWindow() {
   const { user } = useAuth()
@@ -189,12 +500,15 @@ export default function AllianceChatWindow() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [replyTo, setReplyTo] = useState<{ messageId: string; content: string; senderName: string } | null>(null)
   const touchStartXRef = useRef<number | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [uploadingFiles, setUploadingFiles] = useState(false)
 
   const activeRouteCode = routeCode ? String(routeCode) : ''
 
   function handleStartReply(msg: Message) {
     const senderLabel = (msg.senderName && msg.senderName.trim()) || msg.senderEmail.split('@')[0]
-    const snippet = msg.content.length > 120 ? msg.content.slice(0, 117) + '…' : msg.content
+    const content = msg.content || ''
+    const snippet = content.length > 120 ? content.slice(0, 117) + '…' : content
     setReplyTo({
       messageId: msg._id,
       content: snippet,
@@ -385,12 +699,13 @@ export default function AllianceChatWindow() {
   }
 
   // Translation function with server-side queue
-  async function translateMessage(messageId: string, messageContent: string, retryCount: number = 0) {
+  async function translateMessage(messageId: string, messageContent?: string, retryCount: number = 0) {
     const lang = targetLanguageRef.current.trim()
     if (!lang) {
       alert('Please select a target language first from the Languages button in the header.')
       return
     }
+    if (!messageContent || !messageContent.trim()) return
     
     // If translation is already pending for this message, avoid spamming duplicate requests
     if (pendingTranslations[messageId] && !translations[messageId]) {
@@ -484,7 +799,7 @@ export default function AllianceChatWindow() {
     if (!messages || messages.length === 0) return
 
     const eligible = [...messages]
-      .filter((msg) => msg && msg._id && msg.senderEmail !== user?.email)
+      .filter((msg) => msg && msg._id && msg.senderEmail !== user?.email && !!msg.content)
       .filter((msg) => !translations[msg._id] && !pendingTranslations[msg._id])
       .sort((a, b) => {
         const aTs = new Date(a.createdAt).getTime()
@@ -815,11 +1130,30 @@ export default function AllianceChatWindow() {
           stream.getTracks().forEach((t) => t.stop())
           mediaRef.current = null
           if (!blob || blob.size === 0) return
+    
+          // Upload audio to server instead of transcribing
           setTranscribing(true)
-          const t: string = await transcribeWithRetry(blob, mime)
-          if (t) setMessageText((prev) => (prev ? prev + ' ' + t : t))
+          const formData = new FormData()
+          formData.append('audio', blob, 'voice-message.webm')
+    
+          // Calculate duration in seconds
+          const duration = (Date.now() - recordingStartAtRef.current) / 1000
+          formData.append('duration', duration.toString())
+    
+          const response = await api.post(`/alliance/rooms/${joined?.code}/voice-message`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          })
+    
+          if (response.data.ok) {
+            // Voice message sent successfully
+            console.log('Voice message sent successfully')
+          } else {
+            console.error('Failed to send voice message')
+          }
         } catch (err) {
-          console.error(err)
+          console.error('Error sending voice message:', err)
         } finally {
           setTranscribing(false)
         }
@@ -966,7 +1300,8 @@ export default function AllianceChatWindow() {
         if (lang && Array.isArray(data) && data.length > 0) {
           const now = Date.now()
           for (const msg of data) {
-            if (!msg || !msg._id || msg.senderEmail === user?.email) continue
+              if (!msg || !msg._id || msg.senderEmail === user?.email) continue
+              if (!msg.content) continue
             if (autoTranslatedRef.current.has(msg._id)) continue
             const createdTs = msg.createdAt ? new Date(msg.createdAt).getTime() : now
             const safeCreated = Number.isFinite(createdTs) ? createdTs : now
@@ -1135,7 +1470,7 @@ export default function AllianceChatWindow() {
           }
 
           // Auto-translate only truly new messages (<= 30m old) once per message
-          if (targetLanguageRef.current.trim() && !autoTranslatedRef.current.has(payload._id)) {
+          if (targetLanguageRef.current.trim() && !autoTranslatedRef.current.has(payload._id) && payload.content) {
             const createdTs = payload.createdAt ? new Date(payload.createdAt).getTime() : Date.now()
             const safeCreated = Number.isFinite(createdTs) ? createdTs : Date.now()
             const ageMs = Date.now() - safeCreated
@@ -1193,40 +1528,81 @@ export default function AllianceChatWindow() {
   }
 
   async function sendMessage() {
-    if (!joined?.code || !messageText.trim() || sending) return
-    const content = messageText.trim()
-    console.log('Sending message:', content, 'to room:', joined.code)
-    setSending(true)
-    const replyMeta = replyTo
-    const optimistic: Message = {
-      _id: `temp-${Date.now()}`,
-      roomCode: joined.code,
-      senderEmail: user?.email || 'You',
-      senderId: 'me',
-      content,
-      createdAt: new Date().toISOString(),
-      replyToMessageId: replyMeta?.messageId,
-      replyToContent: replyMeta?.content,
-      replyToSenderName: replyMeta?.senderName
+    if (!joined?.code) return;
+    
+    const hasText = messageText.trim();
+    const hasAttachments = attachments.length > 0;
+    
+    if (!hasText && !hasAttachments) return;
+    if (sending || uploadingFiles) return;
+
+    const content = messageText.trim();
+    const replyMeta = replyTo;
+
+    // Handle attachments upload
+    if (hasAttachments) {
+      setUploadingFiles(true);
+      try {
+        for (const att of attachments) {
+          const formData = new FormData();
+          formData.append('file', att.file);
+          
+          if (replyMeta) {
+            formData.append('replyToMessageId', replyMeta.messageId);
+            formData.append('replyToContent', replyMeta.content);
+            formData.append('replyToSenderName', replyMeta.senderName);
+          }
+
+          await api.post(`/alliance/rooms/${joined.code}/file`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+        }
+        
+        // Clear attachments after successful upload
+        setAttachments([]);
+        setReplyTo(null);
+      } catch (err) {
+        console.error('Error uploading files:', err);
+        alert('Failed to upload files. Please try again.');
+      } finally {
+        setUploadingFiles(false);
+      }
     }
-    console.log('Adding optimistic message:', optimistic)
-    setMessages((prev) => [...prev, optimistic])
-    setMessageText('')
-    setReplyTo(null)
-    scrollToBottom()
-    try {
-      console.log('Calling API to send message...')
-      const response = await api.post(`/alliance/rooms/${joined.code}/messages`, {
-        content,
+
+    // Handle text message
+    if (hasText) {
+      setSending(true);
+      const optimistic: Message = {
+        _id: `temp-${Date.now()}`,
+        roomCode: joined.code,
+        senderEmail: user?.email || 'You',
+        senderId: 'me',
+        content: content,
+        createdAt: new Date().toISOString(),
         replyToMessageId: replyMeta?.messageId,
         replyToContent: replyMeta?.content,
         replyToSenderName: replyMeta?.senderName
-      })
-      console.log('Message sent successfully, API response:', response.data)
-    } catch (err) {
-      setMessages((prev) => prev.filter((m) => m._id !== optimistic._id))
-    } finally {
-      setSending(false)
+      };
+      
+      setMessages((prev) => [...prev, optimistic]);
+      setMessageText('');
+      setReplyTo(null);
+      scrollToBottom();
+      
+      try {
+        await api.post(`/alliance/rooms/${joined.code}/messages`, {
+          content: content,
+          replyToMessageId: replyMeta?.messageId,
+          replyToContent: replyMeta?.content,
+          replyToSenderName: replyMeta?.senderName
+        });
+      } catch (err) {
+        setMessages((prev) => prev.filter((m) => m._id !== optimistic._id));
+      } finally {
+        setSending(false);
+      }
     }
   }
 
@@ -1918,20 +2294,45 @@ export default function AllianceChatWindow() {
                                   </div>
                                 </div>
                               )}
-                              {/* Original message */}
-                              <div
-                                translate="no"
-                                className={`notranslate leading-relaxed whitespace-pre-wrap break-words ${
-                                  mine
-                                    ? 'text-[12px] sm:text-[13px] md:text-[15px]'
-                                    : 'text-[11px] sm:text-[12px] md:text-[14px]'
-                                }`}
-                              >
-                                {msg.content}
-                              </div>
+                              {/* Original message - text or voice or file */}
+                              {msg.content && (
+                                <div
+                                  translate="no"
+                                  className={`notranslate leading-relaxed whitespace-pre-wrap break-words ${
+                                    mine
+                                      ? 'text-[12px] sm:text-[13px] md:text-[15px]'
+                                      : 'text-[11px] sm:text-[12px] md:text-[14px]'
+                                  }`}
+                                >
+                                  {msg.content}
+                                </div>
+                              )}
+
+                              {msg.audioUrl && (
+                                <div className="mt-2">
+                                  <VoiceMessagePlayer
+                                    audioUrl={msg.audioUrl}
+                                    duration={msg.audioDuration}
+                                    isMine={mine}
+                                  />
+                                </div>
+                              )}
+
+                              {msg.fileUrl && msg.fileName && (
+                                <div className="mt-2">
+                                  <FileMessage
+                                    fileUrl={msg.fileUrl}
+                                    fileName={msg.fileName}
+                                    fileType={msg.fileType}
+                                    fileSize={msg.fileSize}
+                                    isMine={mine}
+                                    onImagePreview={setImagePreviewUrl}
+                                  />
+                                </div>
+                              )}
 
                               {/* Translated message (if available) */}
-                              {translations[msg._id] && (
+                              {translations[msg._id] && msg.content && (
                                 <div className="notranslate mt-2 pt-2 border-t border-white/20" translate="no">
                                   <div className="flex items-center gap-1 mb-1">
                                     <Languages size={10} className="text-sky-600" />
@@ -2066,12 +2467,19 @@ export default function AllianceChatWindow() {
             </div>
           </div>
 
-          {/* Listening Popup */}
+          {/* Listening Popup with Wave Animation */}
           {recording && (
             <div className="absolute bottom-24 left-0 right-0 z-50 flex justify-center px-3">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 text-white/90 backdrop-blur-md px-3 py-1.5 text-xs shadow-lg">
-                <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-                <span>Listening… tap mic to stop</span>
+              <div className="inline-flex items-center gap-2 rounded-full bg-green-500/20 border border-green-500/30 text-green-300 backdrop-blur-md px-3 py-1.5 text-xs shadow-lg">
+                <div className="flex items-center gap-1">
+                  {/* Wave animation */}
+                  <div className="w-1 h-3 bg-green-400 rounded-full animate-wave1"></div>
+                  <div className="w-1 h-4 bg-green-400 rounded-full animate-wave2"></div>
+                  <div className="w-1 h-5 bg-green-400 rounded-full animate-wave3"></div>
+                  <div className="w-1 h-4 bg-green-400 rounded-full animate-wave2"></div>
+                  <div className="w-1 h-3 bg-green-400 rounded-full animate-wave1"></div>
+                </div>
+                <span>Recording… tap mic to stop</span>
               </div>
             </div>
           )}
@@ -2143,7 +2551,7 @@ export default function AllianceChatWindow() {
                       disabled={sending || transcribing}
                       className={`flex-none h-10 w-10 md:h-[46px] md:w-[46px] rounded-full transition-all duration-200 grid place-items-center border ${
                         recording
-                          ? 'border-red-500/50 bg-red-500/30 text-white shadow-[0_0_20px_rgba(248,113,113,0.35)] scale-105'
+                          ? 'border-green-500/50 bg-green-500/30 text-white shadow-[0_0_20px_rgba(74,222,128,0.35)] scale-105'
                           : transcribing
                             ? 'border-white/15 bg-white/8 text-white/45'
                             : 'border-white/12 bg-white/8 text-white/70 hover:text-white hover:border-white/25 hover:bg-white/12 active:scale-[0.96]'
@@ -2153,7 +2561,7 @@ export default function AllianceChatWindow() {
                       {transcribing ? (
                         <div className="w-4 h-4 border-[1.5px] border-white/50 border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <Mic size={18} className={recording ? 'animate-pulse' : ''} />
+                        <Mic size={18} className={recording ? '' : ''} />
                       )}
                     </button>
 
@@ -2240,6 +2648,14 @@ export default function AllianceChatWindow() {
             </div>
           </div>
         </div>
+
+        {/* Image Preview Modal */}
+        {imagePreviewUrl && (
+          <ImagePreviewModal
+            imageUrl={imagePreviewUrl}
+            onClose={() => setImagePreviewUrl(null)}
+          />
+        )}
       </>
     )
   }

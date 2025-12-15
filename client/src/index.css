@@ -478,6 +478,22 @@ input:focus {
   100% { background-position: 0% 50%; }
 }
 
+/* Wave animations for voice recording indicator */
+@keyframes wave1 {
+  0%, 100% { height: 0.75rem; }
+  50% { height: 1rem; }
+}
+
+@keyframes wave2 {
+  0%, 100% { height: 1rem; }
+  50% { height: 1.25rem; }
+}
+
+@keyframes wave3 {
+  0%, 100% { height: 1.25rem; }
+  50% { height: 1.5rem; }
+}
+
 /* Smooth scrolling for mobile chat */
 .smooth-scroll {
   -webkit-overflow-scrolling: touch;
