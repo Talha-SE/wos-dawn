@@ -479,7 +479,11 @@ router.get('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) =
         ...d,
         senderName,
         audioUrl: d.audioUrl,
-        audioDuration: d.audioDuration
+        audioDuration: d.audioDuration,
+        fileUrl: (d as any).fileUrl,
+        fileName: (d as any).fileName,
+        fileType: (d as any).fileType,
+        fileSize: (d as any).fileSize
       }
     })
     res.json(out)
