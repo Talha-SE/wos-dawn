@@ -6,6 +6,7 @@ import { User } from '../models/User';
 export interface AuthRequest extends Request {
   userId?: string;
   body: any;
+  files?: any;
 }
 
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {

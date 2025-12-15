@@ -2,6 +2,8 @@ import { Router, Response } from 'express'
 import { Types } from 'mongoose'
 import bcrypt from 'bcryptjs'
 import axios from 'axios'
+import path from 'path'
+import fs from 'fs'
 import { requireAuth, AuthRequest } from '../middleware/auth'
 import AllianceRoom from '../models/AllianceRoom'
 import AllianceMembership from '../models/AllianceMembership'
@@ -10,6 +12,7 @@ import PendingTranslation from '../models/PendingTranslation'
 import { User } from '../models/User'
 import { getTranslationQueue } from '../services/translationQueue'
 import { subscribeToTranslations } from '../services/translationBroadcast'
+import fileUpload from 'express-fileupload'
 
 const router = Router()
 type Client = { res: Response }
@@ -91,6 +94,8 @@ function makeRandom(len = 5) {
   for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)]
   return out
 }
+
+export default router
 
 function makeCode(name: string, state: number) {
   const core = name.trim().replace(/\s+/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -430,8 +435,6 @@ router.put('/translation-language', requireAuth, async (req: AuthRequest, res) =
   }
 })
 
-export default router
-
 // Owner-only delete room with password confirmation
 router.delete('/rooms/:code', requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -472,7 +475,12 @@ router.get('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) =
     const out = docs.reverse().map(d => {
       const u = userMap.get(String(d.senderId)) as any
       const senderName = (u?.gameName && String(u.gameName).trim()) || String(d.senderEmail).split('@')[0]
-      return { ...d, senderName }
+      return {
+        ...d,
+        senderName,
+        audioUrl: d.audioUrl,
+        audioDuration: d.audioDuration
+      }
     })
     res.json(out)
   } catch (err: any) {
@@ -503,7 +511,7 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
       roomCode: code,
       senderId: req.userId!,
       senderEmail: user.email,
-      content: trimmed,
+      content: trimmed || undefined,
       replyToMessageId: replyToMessageId || undefined,
       replyToContent: replyToContent || undefined,
       replyToSenderName: replyToSenderName || undefined
@@ -518,19 +526,202 @@ router.post('/rooms/:code/messages', requireAuth, async (req: AuthRequest, res) 
         senderId: doc.senderId,
         senderName: (user.gameName && user.gameName.trim()) || String(user.email).split('@')[0],
         content: doc.content,
+        audioUrl: doc.audioUrl,
+        audioDuration: doc.audioDuration,
         createdAt: doc.createdAt,
         replyToMessageId: doc.replyToMessageId,
         replyToContent: doc.replyToContent,
         replyToSenderName: doc.replyToSenderName
       }
     }
-    
+
     console.log(`Broadcasting message to room ${code}, connected clients:`, roomStreams.get(code)?.size || 0)
     broadcastMessage(code, messagePayload)
 
     res.status(201).json({ ok: true })
   } catch (err: any) {
     res.status(500).json({ message: err.message || 'Failed to send message' })
+  }
+})
+
+// Handle voice message uploads
+router.post('/rooms/:code/voice-message', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const code = String(req.params.code)
+    const membership = await AllianceMembership.findOne({ roomCode: code, userId: req.userId })
+    if (!membership) return res.status(403).json({ message: 'Join the room first' })
+
+    const user = await User.findById(req.userId).select('email gameName')
+    if (!user) return res.status(401).json({ message: 'User not found' })
+
+    // Check if audio file was uploaded
+    if (!req.files || !req.files.audio) {
+      return res.status(400).json({ message: 'Audio file is required' })
+    }
+
+    const audioFile = req.files.audio
+    const { replyToMessageId, replyToContent, replyToSenderName } = req.body
+
+    // Generate a unique filename for the audio
+    const fileExt = audioFile.name.split('.').pop()
+    const fileName = `voice-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`
+
+    // Validate file type
+    const allowedTypes = ['audio/webm', 'audio/ogg', 'audio/wav', 'audio/mp3', 'audio/mpeg'];
+    const fileMimeType = audioFile.mimetype || '';
+
+    if (!allowedTypes.includes(fileMimeType)) {
+      return res.status(400).json({ message: 'Invalid audio file type. Allowed types: webm, ogg, wav, mp3' });
+    }
+
+    // Save the file to the uploads directory
+    const uploadDir = path.join(__dirname, '../../public/uploads/voice-messages');
+    const uploadPath = path.join(uploadDir, fileName);
+
+    // Ensure directory exists
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    await audioFile.mv(uploadPath);
+
+    // Calculate audio duration if not provided
+    let duration = parseFloat(req.body.duration) || 0;
+    if (!duration && req.files.audio.tempFilePath) {
+      // For real audio files, we could use ffprobe to calculate duration
+      // For now, we'll use a default value
+      duration = 5.0; // Default duration if not provided
+    }
+
+    // Create message record in database
+    // Store the full URL if we have the base URL, otherwise use relative path
+    const audioUrl = process.env.SERVER_BASE_URL
+      ? `${process.env.SERVER_BASE_URL}/uploads/voice-messages/${fileName}`
+      : `/uploads/voice-messages/${fileName}`;
+
+    const doc = await AllianceMessage.create({
+      roomCode: code,
+      senderId: req.userId!,
+      senderEmail: user.email,
+      audioUrl: audioUrl,
+      audioDuration: duration,
+      replyToMessageId: replyToMessageId || undefined,
+      replyToContent: replyToContent || undefined,
+      replyToSenderName: replyToSenderName || undefined
+    })
+
+    const messagePayload = {
+      type: 'message',
+      payload: {
+        _id: doc._id,
+        roomCode: doc.roomCode,
+        senderEmail: doc.senderEmail,
+        senderId: doc.senderId,
+        senderName: (user.gameName && user.gameName.trim()) || String(user.email).split('@')[0],
+        content: doc.content,
+        audioUrl: doc.audioUrl,
+        audioDuration: doc.audioDuration,
+        createdAt: doc.createdAt,
+        replyToMessageId: doc.replyToMessageId,
+        replyToContent: doc.replyToContent,
+        replyToSenderName: doc.replyToSenderName
+      }
+    }
+
+    console.log(`Broadcasting voice message to room ${code}, connected clients:`, roomStreams.get(code)?.size || 0)
+    broadcastMessage(code, messagePayload)
+
+    res.status(201).json({
+      ok: true,
+      messageId: doc._id
+    })
+  } catch (err: any) {
+    console.error('Error uploading voice message:', err)
+    res.status(500).json({ message: err.message || 'Failed to upload voice message' })
+  }
+})
+
+// Handle file uploads (images, PDFs, documents, etc.)
+router.post('/rooms/:code/file', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const code = String(req.params.code)
+    const membership = await AllianceMembership.findOne({ roomCode: code, userId: req.userId })
+    if (!membership) return res.status(403).json({ message: 'Join the room first' })
+
+    const user = await User.findById(req.userId).select('email gameName')
+    if (!user) return res.status(401).json({ message: 'User not found' })
+
+    // Check if file was uploaded
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ message: 'File is required' })
+    }
+
+    const uploadedFile = Array.isArray(req.files.file) ? req.files.file[0] : req.files.file
+    const { replyToMessageId, replyToContent, replyToSenderName } = req.body
+
+    // Generate a unique filename
+    const fileExt = uploadedFile.name.split('.').pop() || 'bin'
+    const fileName = `file-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`
+
+    // Save the file to the uploads directory
+    const uploadDir = path.join(__dirname, '../../public/uploads/files');
+    const uploadPath = path.join(uploadDir, fileName);
+
+    // Ensure directory exists
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    await uploadedFile.mv(uploadPath);
+
+    // Create message record in database
+    const fileUrl = process.env.SERVER_BASE_URL
+      ? `${process.env.SERVER_BASE_URL}/uploads/files/${fileName}`
+      : `/uploads/files/${fileName}`;
+
+    const doc = await AllianceMessage.create({
+      roomCode: code,
+      senderId: req.userId!,
+      senderEmail: user.email,
+      fileUrl: fileUrl,
+      fileName: uploadedFile.name,
+      fileType: uploadedFile.mimetype,
+      fileSize: uploadedFile.size,
+      replyToMessageId: replyToMessageId || undefined,
+      replyToContent: replyToContent || undefined,
+      replyToSenderName: replyToSenderName || undefined
+    })
+
+    const messagePayload = {
+      type: 'message',
+      payload: {
+        _id: doc._id,
+        roomCode: doc.roomCode,
+        senderEmail: doc.senderEmail,
+        senderId: doc.senderId,
+        senderName: (user.gameName && user.gameName.trim()) || String(user.email).split('@')[0],
+        content: doc.content,
+        fileUrl: doc.fileUrl,
+        fileName: doc.fileName,
+        fileType: doc.fileType,
+        fileSize: doc.fileSize,
+        createdAt: doc.createdAt,
+        replyToMessageId: doc.replyToMessageId,
+        replyToContent: doc.replyToContent,
+        replyToSenderName: doc.replyToSenderName
+      }
+    }
+
+    console.log(`Broadcasting file message to room ${code}, connected clients:`, roomStreams.get(code)?.size || 0)
+    broadcastMessage(code, messagePayload)
+
+    res.status(201).json({
+      ok: true,
+      messageId: doc._id
+    })
+  } catch (err: any) {
+    console.error('Error uploading file:', err)
+    res.status(500).json({ message: err.message || 'Failed to upload file' })
   }
 })
 
