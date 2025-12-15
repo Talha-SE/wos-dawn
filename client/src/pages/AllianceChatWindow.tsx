@@ -29,6 +29,50 @@ import {
 import notificationMp3 from '../assets/room-message-notification.mp3'
 import { gentlyRequestNotificationPermission, showRoomNotification } from '../utils/notificationClient'
 
+// Resolve asset URLs served from the API/uploads path. Ensures we don't prefix uploads with `/api` twice.
+const resolveAssetUrl = (url?: string) => {
+  if (!url) return '';
+  if (/^https?:\/\//.test(url) || url.startsWith('//')) return url;
+  let apiBase = (import.meta.env.VITE_API_URL as string) || '';
+  apiBase = apiBase.replace(/\/$/, '');
+  apiBase = apiBase.replace(/\/api$/, '');
+  const path = url.startsWith('/') ? url : '/' + url;
+  return `${apiBase}${path}`;
+}
+
+// Minimal voice message player to support playback where a richer component may be defined later.
+const VoiceMessagePlayer = ({ audioUrl, duration, isMine }: { audioUrl?: string; duration?: number; isMine?: boolean }) => {
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (!audioUrl) return;
+    audioRef.current = new Audio(resolveAssetUrl(audioUrl));
+    const a = audioRef.current;
+    const onEnded = () => setPlaying(false);
+    a.addEventListener('ended', onEnded);
+    return () => {
+      a.pause();
+      a.removeEventListener('ended', onEnded);
+      audioRef.current = null;
+    };
+  }, [audioUrl]);
+
+  const toggle = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    if (playing) { a.pause(); setPlaying(false); }
+    else { a.play().then(() => setPlaying(true)).catch(() => setPlaying(false)); }
+  };
+
+  return (
+    <button type="button" onClick={toggle} className={`flex items-center gap-2 px-3 py-2 rounded-lg ${isMine ? 'bg-white/6' : 'bg-slate-900/20'}`}>
+      <div className="text-sm font-medium">{playing ? 'Pause' : 'Play'}</div>
+      {typeof duration === 'number' && <div className="text-xs text-white/60">{Math.ceil(duration)}s</div>}
+    </button>
+  );
+}
+
 type Room = { code: string; name: string; state: number; isOwner?: boolean }
 type Message = {
   _id: string
@@ -117,174 +161,18 @@ const tutorialSlides: TutorialSlide[] = [
 const ALLIANCE_ROOMS_CACHE_KEY = 'wos_alliance_joined_rooms_v1'
 const ALLIANCE_MESSAGES_CACHE_PREFIX = 'wos_alliance_room_messages_v1_'
 
-// Helper to resolve server-hosted asset URLs correctly.
-function resolveAssetUrl(url: string) {
-  if (!url) return url
-  if (/^https?:\/\//i.test(url)) return url
-  if (url.startsWith('/')) {
-    // Prefer using API base origin but strip any trailing `/api` path
-    const apiBase = String(api.defaults.baseURL || '')
-    const withoutApi = apiBase.replace(/\/api\/?$/, '')
-    if (withoutApi) return `${withoutApi}${url}`
-    return `${window.location.origin}${url}`
-  }
-  return url
-}
-
-// Voice Message Player Component - Redesigned Discord-style
-const VoiceMessagePlayer = ({ audioUrl, duration, isMine }: { audioUrl: string; duration?: number; isMine: boolean }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const togglePlay = useCallback(async () => {
-    if (isLoading) return;
-
-    if (isPlaying) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      setIsPlaying(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-
-      const finalAudioUrl = resolveAssetUrl(audioUrl);
-      const audio = new Audio(finalAudioUrl);
-      audioRef.current = audio;
-
-      audio.ontimeupdate = () => {
-        setCurrentTime(audio.currentTime);
-      };
-
-      audio.onplaying = () => {
-        setIsPlaying(true);
-        setIsLoading(false);
-      };
-
-      audio.onended = () => {
-        setIsPlaying(false);
-        setCurrentTime(0);
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-        }
-      };
-
-      audio.onpause = () => {
-        setIsPlaying(false);
-      };
-
-      audio.onerror = () => {
-        setError('Failed to play audio');
-        setIsPlaying(false);
-        setIsLoading(false);
-      };
-
-      await audio.play();
-    } catch (err) {
-      setError('Failed to play audio');
-      setIsPlaying(false);
-      setIsLoading(false);
-    }
-  }, [audioUrl, isPlaying, isLoading]);
-
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
-  const formatTime = (time: number) => {
-    const mins = Math.floor(time / 60);
-    const secs = Math.floor(time % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const displayDuration = duration || audioRef.current?.duration || 0;
-  const progress = displayDuration > 0 ? (currentTime / displayDuration) * 100 : 0;
-
-  return (
-    <div className={`flex items-center gap-3 min-w-[240px] max-w-[320px] p-2.5 rounded-xl transition-all duration-200 ${
-      isMine ? 'bg-white/10 backdrop-blur-sm' : 'bg-slate-900/30 backdrop-blur-sm'
-    }`}>
-      <button
-        onClick={togglePlay}
-        disabled={isLoading}
-        className={`flex-none w-10 h-10 rounded-full transition-all duration-200 flex items-center justify-center ${
-          isLoading ? 'cursor-wait opacity-70' : 'hover:scale-105 active:scale-95'
-        } ${
-          isMine 
-            ? 'bg-white text-sky-600 hover:bg-white/90' 
-            : 'bg-sky-500 text-white hover:bg-sky-400'
-        }`}
-        title={isPlaying ? 'Pause' : 'Play'}
-      >
-        {isLoading ? (
-          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        ) : isPlaying ? (
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <rect x="6" y="4" width="4" height="16" rx="1"></rect>
-            <rect x="14" y="4" width="4" height="16" rx="1"></rect>
-          </svg>
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <polygon points="7 4 19 12 7 20 7 4"></polygon>
-          </svg>
-        )}
-      </button>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1.5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={isMine ? 'text-white/70' : 'text-slate-700'}>
-            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-            <line x1="12" x2="12" y1="19" y2="22"></line>
-          </svg>
-          <span className={`text-xs font-medium ${isMine ? 'text-white/80' : 'text-slate-700'}`}>
-            Voice Message
-          </span>
-          <span className={`ml-auto text-[10px] font-mono ${isMine ? 'text-white/60' : 'text-slate-500'}`}>
-            {isPlaying ? formatTime(currentTime) : formatTime(displayDuration)}
-          </span>
-        </div>
-        
-        <div className={`h-1.5 rounded-full overflow-hidden ${isMine ? 'bg-white/20' : 'bg-slate-300/50'}`}>
-          <div 
-            className={`h-full rounded-full transition-all duration-100 ${isMine ? 'bg-white' : 'bg-sky-500'}`}
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// File Message Component
-const FileMessage = ({ 
-  fileUrl, 
-  fileName, 
-  fileType, 
-  fileSize, 
+const FileMessage = ({
+  fileUrl,
+  fileName,
+  fileType,
+  fileSize,
   isMine,
-  onImagePreview 
-}: { 
-  fileUrl: string; 
-  fileName: string; 
-  fileType?: string; 
-  fileSize?: number; 
+  onImagePreview
+}: {
+  fileUrl: string;
+  fileName: string;
+  fileType?: string;
+  fileSize?: number;
   isMine: boolean;
   onImagePreview: (url: string) => void;
 }) => {
